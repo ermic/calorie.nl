@@ -1,10 +1,15 @@
+import { redirect } from 'next/navigation';
 import { Card } from '@/shared/ui';
+import { LoginForm } from '@/features/auth';
+import { getCurrentUser } from '@/shared/lib/auth-guard';
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const user = await getCurrentUser();
+  if (user) redirect('/');
+
   return (
     <Card className="w-full max-w-sm">
-      <h1 className="text-xl font-semibold">Inloggen</h1>
-      <p className="mt-2 text-sm text-ink-muted">Login-formulier komt in PR C.</p>
+      <LoginForm />
     </Card>
   );
 }

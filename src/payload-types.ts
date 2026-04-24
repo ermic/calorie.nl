@@ -130,6 +130,7 @@ export interface UserAuthOperations {
 export interface User {
   id: number;
   name?: string | null;
+  role: 'user' | 'admin';
   plan: 'FREE' | 'PREMIUM' | 'PRO';
   aiPhotoCredits: number;
   creditsResetAt?: string | null;
@@ -324,6 +325,7 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  role?: T;
   plan?: T;
   aiPhotoCredits?: T;
   creditsResetAt?: T;
