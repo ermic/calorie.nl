@@ -3,18 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector, pushToast } from '@/shared/store';
-import { ApiError } from '@/shared/lib/api';
+import { getApiErrorMessage } from '@/shared/lib/api';
 import { useSaveMeal } from '@/entities/meal';
 import { useAnalyzePhoto } from '../api/useAnalyzePhoto';
 import { analysisSucceeded, wizardReset } from '../model/slice';
 import { PhotoCapture } from './PhotoCapture';
 import { ReviewStep } from './ReviewStep';
-
-function errorMessage(err: unknown, fallback: string): string {
-  if (err instanceof ApiError) return err.message || fallback;
-  if (err instanceof Error) return err.message || fallback;
-  return fallback;
-}
 
 export function AddMealPhotoFlow() {
   const dispatch = useAppDispatch();
@@ -73,7 +67,7 @@ export function AddMealPhotoFlow() {
       <ReviewStep
         onSave={onSave}
         saving={save.isPending}
-        error={save.isError ? errorMessage(save.error, 'Opslaan mislukt.') : null}
+        error={save.isError ? getApiErrorMessage(save.error, 'Opslaan mislukt.') : null}
       />
     );
   }
@@ -82,7 +76,7 @@ export function AddMealPhotoFlow() {
     <PhotoCapture
       onAnalyze={onAnalyze}
       pending={analyze.isPending}
-      error={analyze.isError ? errorMessage(analyze.error, 'Analyse mislukt.') : null}
+      error={analyze.isError ? getApiErrorMessage(analyze.error, 'Analyse mislukt.') : null}
     />
   );
 }

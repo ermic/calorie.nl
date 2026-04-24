@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { format, isToday, isYesterday, startOfDay } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { Button, Card } from '@/shared/ui';
-import { apiFetch, ApiError } from '@/shared/lib/api';
+import { apiFetch, getApiErrorMessage } from '@/shared/lib/api';
 import { formatKcal } from '@/shared/lib/format';
 import { MealCard } from '@/entities/meal';
 import type { MealListItem, MealsPage } from './fetch-meals';
@@ -55,9 +55,7 @@ export function MealsList({ initialPage }: MealsListProps) {
       setHasMore(page.hasMore);
       setNextOffset(page.nextOffset);
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Laden mislukt.';
-      setError(msg);
+      setError(getApiErrorMessage(err, 'Laden mislukt.'));
     } finally {
       setLoading(false);
     }

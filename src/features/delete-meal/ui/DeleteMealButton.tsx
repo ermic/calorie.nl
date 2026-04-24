@@ -4,7 +4,7 @@ import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Dialog } from '@/shared/ui';
-import { ApiError } from '@/shared/lib/api';
+import { getApiErrorMessage } from '@/shared/lib/api';
 import { pushToast, useAppDispatch } from '@/shared/store';
 import { useDeleteMeal } from '../api/useDeleteMeal';
 
@@ -30,9 +30,7 @@ export function DeleteMealButton({ mealId, redirectTo = '/meals' }: DeleteMealBu
         router.refresh();
       },
       onError: (err) => {
-        const msg =
-          err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Verwijderen mislukt.';
-        setError(msg);
+        setError(getApiErrorMessage(err, 'Verwijderen mislukt.'));
       },
     });
   };

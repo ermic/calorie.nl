@@ -80,9 +80,9 @@ export const Users: CollectionConfig = {
     },
     { name: 'aiPhotoCredits', type: 'number', defaultValue: 5, required: true },
     { name: 'creditsResetAt', type: 'date', defaultValue: () => new Date() },
-    { name: 'dailyCalorieGoal', type: 'number', defaultValue: 2000 },
-    { name: 'weightKg', type: 'number' },
-    { name: 'heightCm', type: 'number' },
+    { name: 'dailyCalorieGoal', type: 'number', defaultValue: 2000, min: 0, max: 20000 },
+    { name: 'weightKg', type: 'number', min: 0, max: 500 },
+    { name: 'heightCm', type: 'number', min: 0, max: 300 },
     { name: 'birthDate', type: 'date' },
     {
       name: 'gender',

@@ -14,7 +14,7 @@ import {
 import type { FoodSearchHit } from '@/entities/food';
 import { Button, Card, Tabs, TabsList, TabsTrigger } from '@/shared/ui';
 import { formatKcal, formatMacro } from '@/shared/lib/format';
-import { ApiError } from '@/shared/lib/api';
+import { getApiErrorMessage } from '@/shared/lib/api';
 import { useAppDispatch, useAppSelector, pushToast } from '@/shared/store';
 import {
   emptyItemAdded,
@@ -25,12 +25,6 @@ import {
   wizardReset,
 } from '../model/slice';
 import { FoodSearch } from './FoodSearch';
-
-function errorMessage(err: unknown, fallback: string): string {
-  if (err instanceof ApiError) return err.message || fallback;
-  if (err instanceof Error) return err.message || fallback;
-  return fallback;
-}
 
 export function ManualMealForm() {
   const dispatch = useAppDispatch();
@@ -128,7 +122,7 @@ export function ManualMealForm() {
 
       {save.isError && (
         <p className="text-sm text-danger" role="alert">
-          {errorMessage(save.error, 'Opslaan mislukt.')}
+          {getApiErrorMessage(save.error, 'Opslaan mislukt.')}
         </p>
       )}
 

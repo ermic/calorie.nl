@@ -3,6 +3,7 @@
 import { Trash2 } from 'lucide-react';
 import { IconButton, Input } from '@/shared/ui';
 import { cn } from '@/shared/lib/cn';
+import { parseDecimal } from '@/shared/lib/number';
 import type { EditableMealItem } from '../model/types';
 
 export type MealItemEditorProps = {
@@ -11,15 +12,6 @@ export type MealItemEditorProps = {
   onRemove: (clientId: string) => void;
   className?: string;
 };
-
-// Accepteert zowel NL-komma als punt; type='text' + inputMode='decimal'
-// opent de numpad op mobiel en staat komma toe, anders dan type='number'.
-function parseDecimal(raw: string): number {
-  const normalized = raw.replace(',', '.').trim();
-  if (!normalized) return 0;
-  const n = parseFloat(normalized);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
-}
 
 const DECIMAL_PATTERN = '[0-9]*[.,]?[0-9]*';
 

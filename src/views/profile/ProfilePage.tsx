@@ -1,0 +1,35 @@
+import { AppHeader } from '@/widgets/app-shell';
+import { Card } from '@/shared/ui';
+import { LogoutButton } from '@/features/auth';
+import { ProfileForm } from '@/features/update-profile';
+import { GoalForm } from '@/features/set-daily-goal';
+import { requireUser } from '@/shared/lib/auth-guard';
+
+export async function ProfilePage() {
+  const user = await requireUser();
+
+  return (
+    <>
+      <AppHeader title="Profiel" />
+      <main className="flex-1 px-4 py-4 mx-auto w-full max-w-2xl space-y-5">
+        <Card padded className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-700 text-lg font-semibold">
+            {(user.name?.trim() || user.email)[0].toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold truncate">{user.name?.trim() || user.email}</p>
+            <p className="text-xs text-ink-muted truncate">{user.email}</p>
+          </div>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-ink/5 text-ink-muted">{user.plan}</span>
+        </Card>
+
+        <GoalForm user={user} />
+        <ProfileForm user={user} />
+
+        <div className="flex justify-center pt-2">
+          <LogoutButton />
+        </div>
+      </main>
+    </>
+  );
+}

@@ -54,6 +54,16 @@ export async function apiFetch<T = unknown>(path: string, init: ApiInit = {}): P
   return payload as T;
 }
 
+// Haal de nuttige tekst uit een willekeurige catch-error voor weergave
+// in UI. Geen null-pad — als er niets zinvols uit komt, krijg je de
+// fallback-tekst. Handig om in onError-callbacks één helper te hebben
+// ipv het if/instanceof-patroon overal te herhalen.
+export function getApiErrorMessage(err: unknown, fallback = 'Er ging iets mis.'): string {
+  if (err instanceof ApiError) return err.message || fallback;
+  if (err instanceof Error) return err.message || fallback;
+  return fallback;
+}
+
 function extractErrorMessage(payload: unknown, status: number): string {
   const fallback = `Request failed: ${status}`;
   if (!payload || typeof payload !== 'object') return fallback;

@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { AppHeader } from '@/widgets/app-shell';
-import { LogoutButton } from '@/features/auth';
 import { requireUser } from '@/shared/lib/auth-guard';
 import { TodayOverview } from '@/widgets/today-overview';
 import { RecentMeals } from '@/widgets/recent-meals';
@@ -18,19 +17,16 @@ export async function DashboardPage() {
         <TodayOverview user={user} />
         <RecentMeals user={user} />
         <WeeklyTrend user={user} />
-        <div className="flex items-center justify-between gap-3 pt-2">
-          {isAdmin ? (
+        {isAdmin && (
+          <div className="flex justify-start pt-2">
             <Link
               href="/admin"
               className="inline-flex h-9 items-center rounded-full bg-primary-600 text-white px-4 text-xs font-medium hover:bg-primary-700"
             >
               Open admin
             </Link>
-          ) : (
-            <span />
-          )}
-          <LogoutButton />
-        </div>
+          </div>
+        )}
       </main>
     </>
   );

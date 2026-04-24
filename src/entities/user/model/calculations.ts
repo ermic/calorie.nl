@@ -24,17 +24,30 @@ const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, number> = {
   VERY_ACTIVE: 1.9,
 };
 
+// Jaren-diff met correctie voor mensen die nog geen verjaardag hadden
+// dit jaar. Gewoon getFullYear-diff zou iedereen vóór zijn verjaardag
+// een jaar te oud maken — significant bij BMR-schatting voor jonge
+// users.
+export function calculateAge(birthDate: Date | string, now: Date = new Date()): number {
+  const birth = typeof birthDate === 'string' ? new Date(birthDate) : birthDate;
+  let age = now.getFullYear() - birth.getFullYear();
+  const beforeBirthdayThisYear =
+    now.getMonth() < birth.getMonth() ||
+    (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate());
+  if (beforeBirthdayThisYear) age -= 1;
+  return Math.max(0, age);
+}
+
 export function calculateTDEE(
   user: Pick<User, 'weightKg' | 'heightCm' | 'birthDate' | 'gender' | 'activityLevel'>,
 ): number | null {
   if (!user.weightKg || !user.heightCm || !user.birthDate || !user.gender || !user.activityLevel) {
     return null;
   }
-  const age = new Date().getFullYear() - new Date(user.birthDate).getFullYear();
   const bmr = calculateBMR({
     weightKg: user.weightKg,
     heightCm: user.heightCm,
-    age,
+    age: calculateAge(user.birthDate),
     gender: user.gender,
   });
   return Math.round(bmr * ACTIVITY_MULTIPLIERS[user.activityLevel]);
