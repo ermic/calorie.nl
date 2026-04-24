@@ -1,5 +1,5 @@
-import type { CollectionBeforeValidateHook, CollectionConfig } from 'payload';
-import { loggedInCreate } from '@/shared/payload/hooks';
+import type { Access, CollectionBeforeValidateHook, CollectionConfig, Where } from 'payload';
+import { forceOwnerUser, isAdmin, loggedInCreate } from '@/shared/payload/hooks';
 
 // Non-admin users may not mark food as VERIFIED or set verified=true.
 // Server-side calls (overrideAccess / no req.user) can still write these.
@@ -10,15 +10,44 @@ const stripTrustedFlags: CollectionBeforeValidateHook = ({ data, req }) => {
   return data;
 };
 
+// USER-source foods zijn persoonlijke entries (auto-aangemaakt vanuit de
+// add-meal flow) en mogen alleen door de creator gezien worden. Andere
+// bronnen (OFF, AI, VERIFIED) blijven gedeelde bibliotheek-data zodat
+// search bij elke ingelogde user dezelfde OFF-resultaten ziet.
+const sharedOrOwnFood: Access = ({ req: { user } }) => {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  const where: Where = {
+    or: [{ source: { not_equals: 'USER' } }, { createdBy: { equals: user.id } }],
+  };
+  return where;
+};
+
+// Mutaties (update/delete) zijn strikter: alleen je eigen USER-foods.
+// OFF/AI/VERIFIED zijn shared library en mogen alleen door admin gewijzigd
+// worden. Zonder deze regel zou Payload's default 'logged-in mag alles'
+// inkappen op gemeenschappelijke OFF-data of andermans persoonlijke
+// entries.
+const ownFoodOrAdmin: Access = ({ req: { user } }) => {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  const where: Where = {
+    and: [{ source: { equals: 'USER' } }, { createdBy: { equals: user.id } }],
+  };
+  return where;
+};
+
 export const Foods: CollectionConfig = {
   slug: 'foods',
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['name', 'brand', 'caloriesPer100', 'source', 'verified'],
+    defaultColumns: ['name', 'brand', 'caloriesPer100', 'source', 'verified', 'createdBy'],
   },
   access: {
-    read: () => true,
+    read: sharedOrOwnFood,
     create: loggedInCreate,
+    update: ownFoodOrAdmin,
+    delete: ownFoodOrAdmin,
   },
   hooks: {
     beforeValidate: [stripTrustedFlags],
@@ -48,5 +77,17 @@ export const Foods: CollectionConfig = {
       required: true,
     },
     { name: 'verified', type: 'checkbox', defaultValue: false },
+    {
+      name: 'createdBy',
+      type: 'relationship',
+      relationTo: 'users',
+      index: true,
+      // Bij create automatisch op req.user.id zetten — voorkomt dat
+      // client-input een andere creator-id meestuurt. Bestaande non-USER
+      // foods (OFF-imports, admin-seeds) krijgen ook een createdBy maar
+      // dat heeft geen access-effect want hun source is niet 'USER'.
+      hooks: { beforeChange: [forceOwnerUser] },
+      admin: { position: 'sidebar' },
+    },
   ],
 };

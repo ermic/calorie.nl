@@ -178,6 +178,7 @@ export interface Food {
   servingUnit?: string | null;
   source: 'USER' | 'OPEN_FOOD_FACTS' | 'AI_GENERATED' | 'VERIFIED';
   verified?: boolean | null;
+  createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -370,6 +371,7 @@ export interface FoodsSelect<T extends boolean = true> {
   servingUnit?: T;
   source?: T;
   verified?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
