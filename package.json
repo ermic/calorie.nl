@@ -12,6 +12,7 @@
     "payload": "payload",
     "generate:types": "payload generate:types",
     "generate:importmap": "payload generate:importmap",
+    "gen:icons": "node scripts/gen-icons.mjs",
     "migrate": "payload migrate",
     "migrate:create": "payload migrate:create"
   },
