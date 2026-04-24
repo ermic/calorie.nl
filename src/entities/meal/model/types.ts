@@ -3,8 +3,22 @@ import type { Meal, MealItem } from '@/payload-types';
 export type MealType = NonNullable<Meal['mealType']>;
 export type { Meal, MealItem };
 
-export function sumMealItems(items: MealItem[]) {
-  return items.reduce(
+export type MealItemMacros = {
+  calories?: number | null;
+  protein?: number | null;
+  carbs?: number | null;
+  fat?: number | null;
+};
+
+export type MealTotals = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+};
+
+export function sumMealItems(items: MealItemMacros[]): MealTotals {
+  return items.reduce<MealTotals>(
     (acc, item) => ({
       calories: acc.calories + (item.calories ?? 0),
       protein: acc.protein + (item.protein ?? 0),

@@ -6,7 +6,7 @@ export function getVisionModel() {
     throw new Error('GEMINI_API_KEY is niet geconfigureerd');
   }
   return new GoogleGenerativeAI(key).getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: process.env.GEMINI_VISION_MODEL ?? 'gemini-2.5-flash-lite',
     generationConfig: {
       temperature: 0.2,
       responseMimeType: 'application/json',

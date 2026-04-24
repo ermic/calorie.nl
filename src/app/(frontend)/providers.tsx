@@ -5,10 +5,15 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, type ReactNode } from 'react';
 import { Provider as ReduxProvider } from 'react-redux';
 import { makeStore } from '@/shared/store';
+import addMealPhotoReducer from '@/features/add-meal-photo/model/slice';
 import { Toaster } from '@/shared/ui';
 
 export function Providers({ children }: { children: ReactNode }) {
-  const [store] = useState(() => makeStore());
+  const [store] = useState(() =>
+    makeStore({
+      addMealPhoto: addMealPhotoReducer,
+    }),
+  );
   const [queryClient] = useState(
     () =>
       new QueryClient({

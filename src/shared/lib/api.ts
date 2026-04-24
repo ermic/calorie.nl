@@ -67,6 +67,7 @@ function extractErrorMessage(payload: unknown, status: number): string {
     }
   }
 
+  if (typeof data.error === 'string') return data.error;
   if (typeof data.message === 'string') return data.message;
   return fallback;
 }
