@@ -39,9 +39,11 @@ Antwoord ALLEEN met geldige JSON in dit formaat:
   "notes": "Optionele toelichting voor onzekerheden"
 }`;
 
+export type GeminiImageMimeType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/heic' | 'image/heif';
+
 export async function analyzePhoto(
   imageBase64: string,
-  mimeType: 'image/jpeg' | 'image/png' = 'image/jpeg',
+  mimeType: GeminiImageMimeType = 'image/jpeg',
 ): Promise<PhotoAnalysis> {
   const result = await getVisionModel().generateContent([
     SYSTEM_PROMPT,

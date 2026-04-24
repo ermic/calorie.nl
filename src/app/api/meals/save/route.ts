@@ -15,9 +15,23 @@ const ItemSchema = z.object({
   fat: z.number().nonnegative().max(1000).default(0),
 });
 
+// Backfill tot 30 dagen, tot 1 dag in de toekomst (tz-buffer). Voorkomt
+// vervuilde "toekomst-meals" via gecrafte requests en houdt DayLog-
+// bucketing binnen de window die dashboard/meals-list toont.
+const EATEN_AT_MAX_PAST_MS = 30 * 24 * 60 * 60 * 1000;
+const EATEN_AT_MAX_FUTURE_MS = 24 * 60 * 60 * 1000;
+
 const SaveSchema = z.object({
   mealType: z.enum(['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']),
-  eatenAt: z.string().datetime().optional(),
+  eatenAt: z
+    .string()
+    .datetime()
+    .refine((v) => {
+      const t = new Date(v).getTime();
+      const now = Date.now();
+      return t >= now - EATEN_AT_MAX_PAST_MS && t <= now + EATEN_AT_MAX_FUTURE_MS;
+    }, 'eatenAt buiten toegestaan bereik (max 30 dagen geleden t/m 1 dag vooruit)')
+    .optional(),
   aiAnalyzed: z.boolean().default(false),
   aiConfidence: z.number().min(0).max(1).optional(),
   items: z.array(ItemSchema).min(1).max(50),
