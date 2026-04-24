@@ -1,27 +1,16 @@
 'use client';
 
-import { Home, ListChecks, Plus, UserRound, type LucideIcon } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { openAddMealSheet, useAppDispatch } from '@/shared/store';
 import { cn } from '@/shared/lib/cn';
-
-type Tab = { href: string; label: string; icon: LucideIcon };
-
-const TABS: Tab[] = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/meals', label: 'Maaltijden', icon: ListChecks },
-  { href: '/profile', label: 'Profiel', icon: UserRound },
-];
-
-function isActive(pathname: string, href: string) {
-  if (href === '/') return pathname === '/';
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+import { NAV_ITEMS, isActive, type NavItem } from './_nav';
 
 export function BottomNav() {
   const pathname = usePathname() ?? '';
   const dispatch = useAppDispatch();
+  const [home, meals, profile] = NAV_ITEMS;
 
   return (
     <nav
@@ -33,9 +22,8 @@ export function BottomNav() {
       )}
     >
       <ul className="grid grid-cols-4 items-center h-16">
-        {TABS.slice(0, 2).map((tab) => (
-          <NavItem key={tab.href} tab={tab} active={isActive(pathname, tab.href)} />
-        ))}
+        <NavTab item={home!} active={isActive(pathname, home!.href)} />
+        <NavTab item={meals!} active={isActive(pathname, meals!.href)} />
 
         <li className="flex items-center justify-center">
           <button
@@ -52,18 +40,18 @@ export function BottomNav() {
           </button>
         </li>
 
-        <NavItem tab={TABS[2]!} active={isActive(pathname, TABS[2]!.href)} />
+        <NavTab item={profile!} active={isActive(pathname, profile!.href)} />
       </ul>
     </nav>
   );
 }
 
-function NavItem({ tab, active }: { tab: Tab; active: boolean }) {
-  const Icon = tab.icon;
+function NavTab({ item, active }: { item: NavItem; active: boolean }) {
+  const Icon = item.icon;
   return (
     <li>
       <Link
-        href={tab.href}
+        href={item.href}
         aria-current={active ? 'page' : undefined}
         className={cn(
           'flex flex-col items-center justify-center gap-1 h-full py-2',
@@ -71,7 +59,7 @@ function NavItem({ tab, active }: { tab: Tab; active: boolean }) {
         )}
       >
         <Icon size={22} aria-hidden />
-        <span className="text-[11px] font-medium">{tab.label}</span>
+        <span className="text-[11px] font-medium">{item.label}</span>
       </Link>
     </li>
   );

@@ -1,23 +1,11 @@
 'use client';
 
-import { Home, ListChecks, Plus, UserRound, type LucideIcon } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { openAddMealSheet, useAppDispatch } from '@/shared/store';
 import { cn } from '@/shared/lib/cn';
-
-type Item = { href: string; label: string; icon: LucideIcon };
-
-const ITEMS: Item[] = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/meals', label: 'Maaltijden', icon: ListChecks },
-  { href: '/profile', label: 'Profiel', icon: UserRound },
-];
-
-function isActive(pathname: string, href: string) {
-  if (href === '/') return pathname === '/';
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+import { NAV_ITEMS, isActive } from './_nav';
 
 export function SideNav() {
   const pathname = usePathname() ?? '';
@@ -31,7 +19,7 @@ export function SideNav() {
         'sticky top-0 self-start h-dvh',
       )}
     >
-      {ITEMS.map((item) => {
+      {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         const active = isActive(pathname, item.href);
         return (
