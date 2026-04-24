@@ -1,6 +1,9 @@
-import type { Access, CollectionConfig } from 'payload';
-
-const loggedIn: Access = ({ req: { user } }) => Boolean(user);
+import type { CollectionConfig } from 'payload';
+import {
+  loggedInCreate,
+  ownViaMeal,
+  verifyMealBelongsToUser,
+} from '@/shared/payload/hooks';
 
 export const MealItems: CollectionConfig = {
   slug: 'mealItems',
@@ -9,9 +12,13 @@ export const MealItems: CollectionConfig = {
     defaultColumns: ['name', 'quantity', 'unit', 'calories'],
   },
   access: {
-    read: loggedIn,
-    update: loggedIn,
-    delete: loggedIn,
+    read: ownViaMeal,
+    update: ownViaMeal,
+    delete: ownViaMeal,
+    create: loggedInCreate,
+  },
+  hooks: {
+    beforeValidate: [verifyMealBelongsToUser],
   },
   fields: [
     { name: 'meal', type: 'relationship', relationTo: 'meals', required: true },

@@ -1,9 +1,5 @@
-import type { Access, CollectionConfig } from 'payload';
-
-const ownOnly: Access = ({ req: { user } }) => {
-  if (!user) return false;
-  return { user: { equals: user.id } };
-};
+import type { CollectionConfig } from 'payload';
+import { forceOwnerUser, loggedInCreate, ownByUser } from '@/shared/payload/hooks';
 
 export const DayLogs: CollectionConfig = {
   slug: 'dayLogs',
@@ -12,9 +8,10 @@ export const DayLogs: CollectionConfig = {
     defaultColumns: ['date', 'user', 'totalCalories'],
   },
   access: {
-    read: ownOnly,
-    update: ownOnly,
-    delete: ownOnly,
+    read: ownByUser,
+    update: ownByUser,
+    delete: ownByUser,
+    create: loggedInCreate,
   },
   fields: [
     {
@@ -23,6 +20,7 @@ export const DayLogs: CollectionConfig = {
       relationTo: 'users',
       required: true,
       index: true,
+      hooks: { beforeChange: [forceOwnerUser] },
     },
     { name: 'date', type: 'date', required: true, index: true },
     { name: 'totalCalories', type: 'number', defaultValue: 0 },
