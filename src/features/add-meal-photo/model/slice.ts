@@ -1,24 +1,15 @@
 import { createSlice, nanoid, type PayloadAction } from '@reduxjs/toolkit';
-import type { PhotoAnalysis } from '@/features/analyze-photo';
-import type { EditableItem, MealType } from './types';
+import { guessMealType, type EditableMealItem, type MealType, type PhotoAnalysis } from '@/entities/meal';
 
 export type Step = 'capture' | 'review';
 
 export type AddMealPhotoState = {
   step: Step;
-  items: EditableItem[];
+  items: EditableMealItem[];
   mealType: MealType;
   confidence: number | null;
   notes: string | null;
 };
-
-function guessMealType(now = new Date()): MealType {
-  const h = now.getHours();
-  if (h < 10) return 'BREAKFAST';
-  if (h < 15) return 'LUNCH';
-  if (h < 21) return 'DINNER';
-  return 'SNACK';
-}
 
 // Statische fallback; mealType wordt gerefreshed bij elke wizardReset
 // zodat een lang-open tab niet met een stale ontbijt-default blijft zitten.
@@ -49,7 +40,7 @@ const slice = createSlice({
       state.notes = action.payload.notes ?? null;
       state.step = 'review';
     },
-    itemUpdated(state, action: PayloadAction<Partial<EditableItem> & Pick<EditableItem, 'clientId'>>) {
+    itemUpdated(state, action: PayloadAction<Partial<EditableMealItem> & Pick<EditableMealItem, 'clientId'>>) {
       const idx = state.items.findIndex((i) => i.clientId === action.payload.clientId);
       if (idx !== -1) state.items[idx] = { ...state.items[idx], ...action.payload };
     },

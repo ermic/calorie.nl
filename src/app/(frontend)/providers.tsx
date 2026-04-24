@@ -6,12 +6,14 @@ import { useState, type ReactNode } from 'react';
 import { Provider as ReduxProvider } from 'react-redux';
 import { makeStore } from '@/shared/store';
 import addMealPhotoReducer from '@/features/add-meal-photo/model/slice';
+import addMealManualReducer from '@/features/add-meal-manual/model/slice';
 import { Toaster } from '@/shared/ui';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [store] = useState(() =>
     makeStore({
       addMealPhoto: addMealPhotoReducer,
+      addMealManual: addMealManualReducer,
     }),
   );
   const [queryClient] = useState(

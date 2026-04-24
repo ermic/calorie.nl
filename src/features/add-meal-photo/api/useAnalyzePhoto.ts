@@ -2,11 +2,11 @@
 
 import { useMutation } from '@tanstack/react-query';
 import { apiFetch } from '@/shared/lib/api';
-import type { PhotoAnalysis } from '@/features/analyze-photo';
+import type { PhotoAnalysis } from '@/entities/meal';
 
 export type AnalyzeResponse = {
   analysis: PhotoAnalysis;
-  creditsRemaining: number;
+  creditsRemaining: number | null;
 };
 
 export function useAnalyzePhoto() {

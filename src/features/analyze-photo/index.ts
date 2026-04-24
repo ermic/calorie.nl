@@ -1,1 +1,1 @@
-export { analyzePhoto, type PhotoAnalysis } from './model/analyze';
+export { analyzePhoto } from './model/analyze';

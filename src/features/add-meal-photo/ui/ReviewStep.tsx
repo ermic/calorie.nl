@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus, RefreshCw, Save } from 'lucide-react';
-import { MEAL_TYPE_LABELS, sumMealItems, type MealType } from '@/entities/meal';
+import { MealItemEditor, MEAL_TYPE_LABELS, MEAL_TYPE_ORDER, sumMealItems, type MealType } from '@/entities/meal';
 import { Button, Card, Tabs, TabsList, TabsTrigger } from '@/shared/ui';
 import { formatKcal, formatMacro } from '@/shared/lib/format';
 import { useAppDispatch, useAppSelector } from '@/shared/store';
@@ -12,9 +12,6 @@ import {
   itemUpdated,
   mealTypeSet,
 } from '../model/slice';
-import { EditableItemRow } from './EditableItemRow';
-
-const MEAL_TYPE_ORDER: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'];
 
 export type ReviewStepProps = {
   onSave: () => void;
@@ -57,7 +54,7 @@ export function ReviewStep({ onSave, saving, error }: ReviewStepProps) {
 
       <div className="space-y-2">
         {items.map((item) => (
-          <EditableItemRow
+          <MealItemEditor
             key={item.clientId}
             item={item}
             onChange={(patch) => dispatch(itemUpdated(patch))}

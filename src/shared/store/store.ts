@@ -1,5 +1,6 @@
 import { configureStore, type Reducer, type ReducersMapObject } from '@reduxjs/toolkit';
 import type { AddMealPhotoState } from '@/features/add-meal-photo/model/slice';
+import type { AddMealManualState } from '@/features/add-meal-manual/model/slice';
 import uiReducer, { type UiState } from './ui-slice';
 
 // FSD-opmerking: shared/store componeert de types voor een eenvoudige
@@ -10,6 +11,7 @@ import uiReducer, { type UiState } from './ui-slice';
 export type RootState = {
   ui: UiState;
   addMealPhoto: AddMealPhotoState;
+  addMealManual: AddMealManualState;
 };
 
 export const makeStore = (extraReducers: ReducersMapObject = {}) =>

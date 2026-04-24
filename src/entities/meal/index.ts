@@ -1,4 +1,18 @@
-export { MEAL_TYPE_LABELS, sumMealItems, type Meal, type MealItem, type MealItemMacros, type MealType } from './model/types';
+export {
+  MEAL_TYPE_LABELS,
+  MEAL_TYPE_ORDER,
+  guessMealType,
+  sumMealItems,
+  type EditableMealItem,
+  type Meal,
+  type MealItem,
+  type MealItemMacros,
+  type MealTotals,
+  type MealType,
+} from './model/types';
+export type { PhotoAnalysis, PhotoAnalysisItem } from './model/photo-analysis';
 export { MealCard, type MealCardProps } from './ui/MealCard';
+export { MealItemEditor, type MealItemEditorProps } from './ui/MealItemEditor';
 export { MealMacroRow, type MealMacroRowProps, type MealMacros } from './ui/MealMacroRow';
 export { MealTypeBadge, type MealTypeBadgeProps } from './ui/MealTypeBadge';
+export { useSaveMeal, type SaveMealInput, type SaveMealResponse } from './api/useSaveMeal';

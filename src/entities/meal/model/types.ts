@@ -10,6 +10,19 @@ export type MealItemMacros = {
   fat?: number | null;
 };
 
+// Editable item gebruikt door zowel de photo- als manual-add-meal flows.
+// clientId is een nanoid voor React-keys en patch-targeting vóór opslag.
+export type EditableMealItem = {
+  clientId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+};
+
 export type MealTotals = {
   calories: number;
   protein: number;
@@ -35,3 +48,15 @@ export const MEAL_TYPE_LABELS: Record<MealType, string> = {
   DINNER: 'Diner',
   SNACK: 'Tussendoor',
 };
+
+export const MEAL_TYPE_ORDER: readonly MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'];
+
+// Tijd-gebaseerde default voor nieuwe maaltijden; gebruikt door photo- en
+// manual-flow wizards.
+export function guessMealType(now: Date = new Date()): MealType {
+  const h = now.getHours();
+  if (h < 10) return 'BREAKFAST';
+  if (h < 15) return 'LUNCH';
+  if (h < 21) return 'DINNER';
+  return 'SNACK';
+}

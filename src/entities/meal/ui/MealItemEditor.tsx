@@ -3,16 +3,27 @@
 import { Trash2 } from 'lucide-react';
 import { IconButton, Input } from '@/shared/ui';
 import { cn } from '@/shared/lib/cn';
-import type { EditableItem } from '../model/types';
+import type { EditableMealItem } from '../model/types';
 
-export type EditableItemRowProps = {
-  item: EditableItem;
-  onChange: (patch: Partial<EditableItem> & Pick<EditableItem, 'clientId'>) => void;
+export type MealItemEditorProps = {
+  item: EditableMealItem;
+  onChange: (patch: Partial<EditableMealItem> & Pick<EditableMealItem, 'clientId'>) => void;
   onRemove: (clientId: string) => void;
   className?: string;
 };
 
-export function EditableItemRow({ item, onChange, onRemove, className }: EditableItemRowProps) {
+// Accepteert zowel NL-komma als punt; type='text' + inputMode='decimal'
+// opent de numpad op mobiel en staat komma toe, anders dan type='number'.
+function parseDecimal(raw: string): number {
+  const normalized = raw.replace(',', '.').trim();
+  if (!normalized) return 0;
+  const n = parseFloat(normalized);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+const DECIMAL_PATTERN = '[0-9]*[.,]?[0-9]*';
+
+export function MealItemEditor({ item, onChange, onRemove, className }: MealItemEditorProps) {
   return (
     <div
       className={cn(
@@ -40,57 +51,56 @@ export function EditableItemRow({ item, onChange, onRemove, className }: Editabl
         <label className="flex flex-col gap-1">
           <span className="text-ink-muted">Hoeveelheid</span>
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
-            min={0}
-            step={1}
+            pattern={DECIMAL_PATTERN}
             value={item.quantity}
             suffix={item.unit || 'g'}
-            onChange={(e) => onChange({ clientId: item.clientId, quantity: Number(e.target.value) || 0 })}
+            onChange={(e) => onChange({ clientId: item.clientId, quantity: parseDecimal(e.target.value) })}
             aria-label="Hoeveelheid"
           />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-ink-muted">Calorieën</span>
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
-            min={0}
+            pattern={DECIMAL_PATTERN}
             value={item.calories}
-            onChange={(e) => onChange({ clientId: item.clientId, calories: Number(e.target.value) || 0 })}
+            onChange={(e) => onChange({ clientId: item.clientId, calories: parseDecimal(e.target.value) })}
             aria-label="Calorieën"
           />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-ink-muted">Eiwit (g)</span>
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
-            min={0}
+            pattern={DECIMAL_PATTERN}
             value={item.protein}
-            onChange={(e) => onChange({ clientId: item.clientId, protein: Number(e.target.value) || 0 })}
+            onChange={(e) => onChange({ clientId: item.clientId, protein: parseDecimal(e.target.value) })}
             aria-label="Eiwit in gram"
           />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-ink-muted">Koolh. (g)</span>
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
-            min={0}
+            pattern={DECIMAL_PATTERN}
             value={item.carbs}
-            onChange={(e) => onChange({ clientId: item.clientId, carbs: Number(e.target.value) || 0 })}
+            onChange={(e) => onChange({ clientId: item.clientId, carbs: parseDecimal(e.target.value) })}
             aria-label="Koolhydraten in gram"
           />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-ink-muted">Vet (g)</span>
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
-            min={0}
+            pattern={DECIMAL_PATTERN}
             value={item.fat}
-            onChange={(e) => onChange({ clientId: item.clientId, fat: Number(e.target.value) || 0 })}
+            onChange={(e) => onChange({ clientId: item.clientId, fat: parseDecimal(e.target.value) })}
             aria-label="Vet in gram"
           />
         </label>

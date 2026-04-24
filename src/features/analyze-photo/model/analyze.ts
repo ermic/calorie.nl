@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getVisionModel } from '@/shared/api/gemini';
+import type { PhotoAnalysis } from '@/entities/meal';
 
 const AnalysisSchema = z.object({
   confidence: z.number().min(0).max(1),
@@ -14,9 +15,7 @@ const AnalysisSchema = z.object({
     }),
   ),
   notes: z.string().optional(),
-});
-
-export type PhotoAnalysis = z.infer<typeof AnalysisSchema>;
+}) satisfies z.ZodType<PhotoAnalysis>;
 
 const SYSTEM_PROMPT = `Je bent een voedingsexpert die foto's van maaltijden analyseert voor een calorie-tracker app.
 
