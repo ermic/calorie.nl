@@ -12,6 +12,7 @@ export {
 } from './model/types';
 export type { PhotoAnalysis, PhotoAnalysisItem } from './model/photo-analysis';
 export { MealCard, type MealCardProps } from './ui/MealCard';
+export { MealDonut, type MealDonutProps } from './ui/MealDonut';
 export { MealItemEditor, type MealItemEditorProps } from './ui/MealItemEditor';
 export { MealMacroRow, type MealMacroRowProps, type MealMacros } from './ui/MealMacroRow';
 export { MealTypeBadge, type MealTypeBadgeProps } from './ui/MealTypeBadge';
