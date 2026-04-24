@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, X } from 'lucide-react';
+import { Download, Share, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button, Card, IconButton } from '@/shared/ui';
 
@@ -16,12 +16,28 @@ const DISMISS_KEY = 'pwa:install-dismissed-at';
 // Na dismiss 14 dagen niet opnieuw vragen.
 const SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
 
+type Variant = 'native' | 'ios' | null;
+
 function isStandalone(): boolean {
   if (typeof window === 'undefined') return false;
   if (window.matchMedia('(display-mode: standalone)').matches) return true;
   // Safari gebruikt nog niet de standaard media-query; fallback op iOS.
   const navigatorStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone;
   return Boolean(navigatorStandalone);
+}
+
+// iOS Safari heeft geen beforeinstallprompt — detect via UA + standalone-
+// property. Chrome op iOS gebruikt dezelfde WebKit en kent ook geen
+// install-prompt; de hint geldt voor allebei. Edge cases (Firefox iOS,
+// in-app browsers) worden via dezelfde 'iOS-like' detectie gevangen.
+// iPadOS 13+ rapporteert MacIntel als platform; vangen via
+// maxTouchPoints>1 zodat iPads ook de hint krijgen.
+function isIOSLike(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/.test(ua) && !(window as unknown as { MSStream?: unknown }).MSStream) return true;
+  if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return true;
+  return false;
 }
 
 function snoozeActive(): boolean {
@@ -35,7 +51,7 @@ function snoozeActive(): boolean {
 
 export function InstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [visible, setVisible] = useState(false);
+  const [variant, setVariant] = useState<Variant>(null);
   const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
@@ -44,23 +60,33 @@ export function InstallPrompt() {
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
-      setVisible(true);
+      setVariant('native');
     };
     const onInstalled = () => {
-      setVisible(false);
+      setVariant(null);
       setDeferred(null);
     };
 
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
+
+    // iOS-pad: geen event om op te wachten — toon de hint direct als we
+    // op iOS zijn en niet al standalone draaien. Met een korte delay
+    // zodat we niet meteen na load de UI vol drukken.
+    let iosTimer: ReturnType<typeof setTimeout> | null = null;
+    if (isIOSLike()) {
+      iosTimer = setTimeout(() => setVariant((v) => v ?? 'ios'), 1500);
+    }
+
     return () => {
       window.removeEventListener('beforeinstallprompt', onPrompt);
       window.removeEventListener('appinstalled', onInstalled);
+      if (iosTimer) clearTimeout(iosTimer);
     };
   }, []);
 
   const dismiss = () => {
-    setVisible(false);
+    setVariant(null);
     try {
       window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
     } catch {
@@ -78,7 +104,7 @@ export function InstallPrompt() {
       if (choice.outcome === 'dismissed') {
         dismiss();
       } else {
-        setVisible(false);
+        setVariant(null);
       }
       setDeferred(null);
     } catch (err) {
@@ -89,7 +115,8 @@ export function InstallPrompt() {
     }
   };
 
-  if (!visible || !deferred) return null;
+  if (variant === null) return null;
+  if (variant === 'native' && !deferred) return null;
 
   return (
     <div
@@ -102,19 +129,29 @@ export function InstallPrompt() {
         className="pointer-events-auto mx-auto max-w-md flex items-start gap-3 border border-ink/10"
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
-          <Download size={20} aria-hidden />
+          {variant === 'ios' ? <Share size={20} aria-hidden /> : <Download size={20} aria-hidden />}
         </span>
         <div className="min-w-0 flex-1">
           <p id="pwa-install-title" className="text-sm font-semibold">
             Installeer als app
           </p>
-          <p className="mt-0.5 text-xs text-ink-muted">
-            Snellere toegang, offline ondersteuning en een eigen plek op je beginscherm.
-          </p>
+          {variant === 'ios' ? (
+            <p className="mt-0.5 text-xs text-ink-muted">
+              Tik op het deel-icoon{' '}
+              <Share size={12} className="inline-block align-text-bottom" aria-hidden />{' '}
+              onderaan je browser en kies <strong>Zet op beginscherm</strong>.
+            </p>
+          ) : (
+            <p className="mt-0.5 text-xs text-ink-muted">
+              Snellere toegang, offline ondersteuning en een eigen plek op je beginscherm.
+            </p>
+          )}
           <div className="mt-3 flex items-center gap-2">
-            <Button size="sm" onClick={install} loading={installing} disabled={installing}>
-              Installeren
-            </Button>
+            {variant === 'native' && (
+              <Button size="sm" onClick={install} loading={installing} disabled={installing}>
+                Installeren
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={dismiss} disabled={installing}>
               Later
             </Button>
