@@ -23,10 +23,22 @@
   ],
   "shortcuts": [
     {
-      "name": "Foto toevoegen",
+      "name": "Maaltijd handmatig",
+      "short_name": "Handmatig",
+      "description": "Voeg een maaltijd toe met food-search",
+      "url": "/add-meal?mode=manual"
+    },
+    {
+      "name": "Foto-analyse",
       "short_name": "Foto",
       "description": "Analyseer je maaltijd met AI",
       "url": "/add-meal?mode=photo"
+    },
+    {
+      "name": "Maaltijden",
+      "short_name": "Meals",
+      "description": "Bekijk je maaltijden-geschiedenis",
+      "url": "/meals"
     }
   ]
 }
