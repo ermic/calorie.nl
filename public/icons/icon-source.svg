@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#ec8a2e"/>
+  <!-- cheese -->
+  <path d="M256 132 L 392 376 Q 256 414, 120 376 Z" fill="#f5d547"/>
+  <!-- crust outline -->
+  <path d="M256 132 L 120 376 Q 256 414, 392 376 Z" fill="none" stroke="#b45913" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- pepperoni -->
+  <circle cx="210" cy="290" r="20" fill="#d93a2c"/>
+  <circle cx="302" cy="270" r="18" fill="#d93a2c"/>
+  <circle cx="256" cy="350" r="19" fill="#d93a2c"/>
+  <!-- basil -->
+  <circle cx="196" cy="358" r="11" fill="#7ac74f"/>
+  <circle cx="322" cy="348" r="13" fill="#7ac74f"/>
+  <!-- olive -->
+  <circle cx="256" cy="240" r="10" fill="#1c1917"/>
+</svg>
