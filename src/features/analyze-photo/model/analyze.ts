@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { visionModel } from '@/shared/api/gemini';
+import { getVisionModel } from '@/shared/api/gemini';
 
 const AnalysisSchema = z.object({
   confidence: z.number().min(0).max(1),
@@ -44,7 +44,7 @@ export async function analyzePhoto(
   imageBase64: string,
   mimeType: 'image/jpeg' | 'image/png' = 'image/jpeg',
 ): Promise<PhotoAnalysis> {
-  const result = await visionModel.generateContent([
+  const result = await getVisionModel().generateContent([
     SYSTEM_PROMPT,
     { inlineData: { data: imageBase64, mimeType } },
   ]);
