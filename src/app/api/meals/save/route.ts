@@ -44,6 +44,80 @@ function startOfDay(d = new Date()) {
   return out;
 }
 
+type SaveItem = z.infer<typeof ItemSchema>;
+
+// Upsert per-100g Food-docs voor de items in deze meal. Dedup-by-name
+// (case-insensitive) binnen één save zodat dubbele namen in dezelfde
+// meal niet twee Food-rows aanmaken. Bestaande Foods worden niet
+// overschreven — als de gebruiker hetzelfde 'brood' later met andere
+// macros invoert, is dat een tweede meal-item maar geen tweede food-doc.
+// Skip per-100g upsert voor items met heel kleine quantity — dat
+// genereert macro-extremen (bv. 0.5 g kruidenmix → 2000 kcal/100g) die
+// in een volgende search hinderlijk groot lijken.
+const MIN_QUANTITY_FOR_FOOD_UPSERT = 5;
+
+async function upsertFoodsFromItems(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  txReq: PayloadRequest,
+  items: SaveItem[],
+): Promise<void> {
+  const candidates = new Map<
+    string,
+    { name: string; caloriesPer100: number; proteinPer100: number; carbsPer100: number; fatPer100: number }
+  >();
+  for (const item of items) {
+    const name = item.name.trim();
+    if (!name || item.unit !== 'g' || item.quantity < MIN_QUANTITY_FOR_FOOD_UPSERT) continue;
+    const key = name.toLowerCase();
+    if (candidates.has(key)) continue;
+    const factor = 100 / item.quantity;
+    candidates.set(key, {
+      name,
+      caloriesPer100: Math.round(item.calories * factor),
+      proteinPer100: Math.round(item.protein * factor * 10) / 10,
+      carbsPer100: Math.round(item.carbs * factor * 10) / 10,
+      fatPer100: Math.round(item.fat * factor * 10) / 10,
+    });
+  }
+  if (candidates.size === 0) return;
+
+  // Payload's 'equals' is case-sensitive op Postgres → 'brood' matcht
+  // niet 'Brood'. Gebruik 'contains' (mapt naar ILIKE %name%) voor een
+  // bredere set en filter daarna exact case-insensitive in JS, anders
+  // ontstaan duplicaten zoals 'brood' / 'Brood' / 'BROOD'.
+  const orQueries = Array.from(candidates.values()).map((c) => ({ name: { contains: c.name } }));
+  const existing = await payload.find({
+    collection: 'foods',
+    where: { or: orQueries },
+    limit: candidates.size * 5,
+    depth: 0,
+    pagination: false,
+    req: txReq,
+  });
+  const existingNamesLowered = new Set(
+    existing.docs
+      .map((f) => f.name.toLowerCase())
+      .filter((lower) => candidates.has(lower)),
+  );
+
+  const toCreate = Array.from(candidates.entries())
+    .filter(([key]) => !existingNamesLowered.has(key))
+    .map(([, food]) => food);
+
+  // Foods.access.create = loggedInCreate; txReq.user is gezet. De
+  // forceOwnerUser-hook (PR #21) pakt user.id op uit txReq voor
+  // createdBy — privacy-laag werkt dus alleen wanneer #21 gemerged is.
+  await Promise.all(
+    toCreate.map((food) =>
+      payload.create({
+        collection: 'foods',
+        data: { ...food, source: 'USER' },
+        req: txReq,
+      }),
+    ),
+  );
+}
+
 export async function POST(req: NextRequest) {
   const payload = await getPayload();
 
@@ -148,6 +222,24 @@ export async function POST(req: NextRequest) {
         }),
       ),
     );
+
+    // Bouw een persoonlijke food-bibliotheek op: dedup-by-name binnen
+    // dezelfde meal, sla per-100g-waardes op zodat een toekomstige
+    // search '/api/foods/search?q=brood' deze entry vindt. Alleen voor
+    // unit==='g'-items, omdat per-100g math anders nergens op slaat
+    // (bv. '3 sneetjes' kan niet naar '100g' geschaald). Voor andere
+    // units tekort: feature-scope, niet kritisch.
+    //
+    // Geïsoleerde try/catch: meal-save is hoofdzaak, food-bibliotheek
+    // bijzaak. Een logica-fout in de upsert (bv. zod-validatie) mag de
+    // meal niet rollback'en. SQL-fouten zetten de tx alsnog in aborted
+    // state — dan faalt commitTransaction hieronder, wat de outer catch
+    // opvangt en correct rolled.
+    try {
+      await upsertFoodsFromItems(payload, txReq, data.items);
+    } catch (foodErr) {
+      console.warn('[meals/save] food-upsert overgeslagen:', foodErr);
+    }
 
     await payload.db.commitTransaction(transactionID);
     return NextResponse.json({ mealId: meal.id });
