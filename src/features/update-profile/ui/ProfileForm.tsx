@@ -2,7 +2,6 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Save } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { Button, Card, Input, Select } from '@/shared/ui';
 import { getApiErrorMessage } from '@/shared/lib/api';
@@ -28,8 +27,7 @@ function defaultValues(user: User): ProfileInput {
 
 export function ProfileForm({ user }: ProfileFormProps) {
   const dispatch = useAppDispatch();
-  const router = useRouter();
-  const update = useUpdateProfile(user.id);
+  const update = useUpdateProfile();
   const {
     register,
     handleSubmit,
@@ -44,8 +42,8 @@ export function ProfileForm({ user }: ProfileFormProps) {
     update.mutate(toProfilePatch(data), {
       onSuccess: (res) => {
         dispatch(pushToast({ type: 'success', message: 'Profiel opgeslagen' }));
-        reset(defaultValues(res.doc));
-        router.refresh();
+        reset(defaultValues(res.user));
+        // revalidatePath in de server-action refresht reeds alle RSC's.
       },
     });
   };

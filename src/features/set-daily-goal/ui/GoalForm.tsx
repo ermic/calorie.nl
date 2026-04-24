@@ -1,7 +1,6 @@
 'use client';
 
 import { Save, Sparkles } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Card, Input } from '@/shared/ui';
 import { getApiErrorMessage } from '@/shared/lib/api';
@@ -21,8 +20,7 @@ function parseGoal(raw: string): number | null {
 
 export function GoalForm({ user }: GoalFormProps) {
   const dispatch = useAppDispatch();
-  const router = useRouter();
-  const update = useSetDailyGoal(user.id);
+  const update = useSetDailyGoal();
   const [value, setValue] = useState(user.dailyCalorieGoal != null ? String(user.dailyCalorieGoal) : '');
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +34,7 @@ export function GoalForm({ user }: GoalFormProps) {
     update.mutate(parsed, {
       onSuccess: () => {
         dispatch(pushToast({ type: 'success', message: 'Doel opgeslagen' }));
-        router.refresh();
+        // revalidatePath in de server-action refresht reeds alle RSC's.
       },
       onError: (err) => {
         setError(getApiErrorMessage(err, 'Opslaan mislukt.'));
