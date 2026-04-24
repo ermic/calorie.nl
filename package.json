@@ -14,7 +14,9 @@
     "generate:importmap": "payload generate:importmap",
     "gen:icons": "node scripts/gen-icons.mjs",
     "migrate": "payload migrate",
-    "migrate:create": "payload migrate:create"
+    "migrate:create": "payload migrate:create",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -44,6 +46,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-query-devtools": "^5.100.1",
     "@types/node": "^20",
