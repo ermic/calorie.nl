@@ -1,4 +1,14 @@
-import type { CollectionConfig } from 'payload';
+import type { CollectionBeforeValidateHook, CollectionConfig } from 'payload';
+import { loggedInCreate } from '@/shared/payload/hooks';
+
+// Non-admin users may not mark food as VERIFIED or set verified=true.
+// Server-side calls (overrideAccess / no req.user) can still write these.
+const stripTrustedFlags: CollectionBeforeValidateHook = ({ data, req }) => {
+  if (!req.user || !data) return data;
+  if (data.source === 'VERIFIED') data.source = 'USER';
+  if (data.verified === true) data.verified = false;
+  return data;
+};
 
 export const Foods: CollectionConfig = {
   slug: 'foods',
@@ -8,6 +18,10 @@ export const Foods: CollectionConfig = {
   },
   access: {
     read: () => true,
+    create: loggedInCreate,
+  },
+  hooks: {
+    beforeValidate: [stripTrustedFlags],
   },
   fields: [
     { name: 'barcode', type: 'text', unique: true, index: true },

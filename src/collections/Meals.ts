@@ -1,9 +1,10 @@
-import type { Access, CollectionConfig } from 'payload';
-
-const ownOnly: Access = ({ req: { user } }) => {
-  if (!user) return false;
-  return { user: { equals: user.id } };
-};
+import type { CollectionConfig } from 'payload';
+import {
+  forceOwnerUser,
+  loggedInCreate,
+  ownByUser,
+  verifyDayLogBelongsToUser,
+} from '@/shared/payload/hooks';
 
 export const Meals: CollectionConfig = {
   slug: 'meals',
@@ -12,9 +13,13 @@ export const Meals: CollectionConfig = {
     defaultColumns: ['mealType', 'eatenAt', 'user', 'aiAnalyzed'],
   },
   access: {
-    read: ownOnly,
-    update: ownOnly,
-    delete: ownOnly,
+    read: ownByUser,
+    update: ownByUser,
+    delete: ownByUser,
+    create: loggedInCreate,
+  },
+  hooks: {
+    beforeValidate: [verifyDayLogBelongsToUser],
   },
   fields: [
     {
@@ -23,6 +28,7 @@ export const Meals: CollectionConfig = {
       relationTo: 'users',
       required: true,
       index: true,
+      hooks: { beforeChange: [forceOwnerUser] },
     },
     {
       name: 'dayLog',
