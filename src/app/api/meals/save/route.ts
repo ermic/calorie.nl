@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers as nextHeaders } from 'next/headers';
 import { z } from 'zod';
+import type { PayloadRequest } from 'payload';
 import { getPayload } from '@/shared/lib/payload';
 
 export const runtime = 'nodejs';
@@ -59,69 +60,106 @@ export async function POST(req: NextRequest) {
   const eatenAt = data.eatenAt ? new Date(data.eatenAt) : new Date();
   const dayIso = startOfDay(eatenAt).toISOString();
 
-  // Find or create dayLog voor (user, dag). user-filter via access-control
-  // zou strikt genomen redundant zijn, maar we overschrijven niets client-side.
-  const existing = await payload.find({
-    collection: 'dayLogs',
-    where: { and: [{ user: { equals: user.id } }, { date: { equals: dayIso } }] },
-    limit: 1,
-    depth: 0,
-    overrideAccess: false,
-    user,
-  });
-
-  // Unique-index op (user, date) kan races geven bij parallele submits —
-  // probeer create, bij 'duplicate key' re-find en gebruik die.
-  async function findOrCreateDayLog() {
-    if (existing.docs[0]) return existing.docs[0];
-    try {
-      return await payload.create({
-        collection: 'dayLogs',
-        data: { user: user!.id, date: dayIso },
-        overrideAccess: false,
-        user: user!,
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '';
-      if (!/duplicate|unique/i.test(message)) throw err;
-      const retry = await payload.find({
-        collection: 'dayLogs',
-        where: { and: [{ user: { equals: user!.id } }, { date: { equals: dayIso } }] },
-        limit: 1,
-        depth: 0,
-        overrideAccess: false,
-        user: user!,
-      });
-      if (retry.docs[0]) return retry.docs[0];
-      throw err;
-    }
-  }
-
-  const dayLog = await findOrCreateDayLog();
-
-  const meal = await payload.create({
-    collection: 'meals',
-    data: {
-      user: user.id,
-      dayLog: dayLog.id,
-      mealType: data.mealType,
-      eatenAt: eatenAt.toISOString(),
-      aiAnalyzed: data.aiAnalyzed,
-      aiConfidence: data.aiConfidence,
-    },
-    overrideAccess: false,
-    user,
-  });
-
-  // Items sequentieel — verifyMealBelongsToUser hook valideert elk item.
-  for (const item of data.items) {
-    await payload.create({
-      collection: 'mealItems',
-      data: { ...item, meal: meal.id },
+  // dayLog find-or-create gebeurt EXPLICIET buiten de transactie. Reden:
+  // bij een unique-constraint-violation (twee tabs maken simultaan een
+  // dayLog voor dezelfde dag) faalt de INSERT en zet Postgres de hele tx
+  // in 'aborted state' — elke volgende query in die tx geeft 'current
+  // transaction is aborted'. dayLogs zijn idempotent (per (user, date)
+  // bestaat er hooguit één), dus losse find-or-create is veilig en
+  // voorkomt savepoint-complexiteit.
+  let dayLog;
+  try {
+    const existing = await payload.find({
+      collection: 'dayLogs',
+      where: { and: [{ user: { equals: user.id } }, { date: { equals: dayIso } }] },
+      limit: 1,
+      depth: 0,
       overrideAccess: false,
       user,
     });
+    dayLog = existing.docs[0];
+    if (!dayLog) {
+      try {
+        dayLog = await payload.create({
+          collection: 'dayLogs',
+          data: { user: user.id, date: dayIso },
+          overrideAccess: false,
+          user,
+        });
+      } catch (createErr) {
+        const message = createErr instanceof Error ? createErr.message : '';
+        if (!/duplicate|unique/i.test(message)) throw createErr;
+        const retry = await payload.find({
+          collection: 'dayLogs',
+          where: { and: [{ user: { equals: user.id } }, { date: { equals: dayIso } }] },
+          limit: 1,
+          depth: 0,
+          overrideAccess: false,
+          user,
+        });
+        dayLog = retry.docs[0];
+        if (!dayLog) throw createErr;
+      }
+    }
+  } catch (err) {
+    console.error('[meals/save] dayLog find-or-create faalde:', err);
+    return NextResponse.json({ error: 'Opslaan mislukt' }, { status: 500 });
   }
 
-  return NextResponse.json({ mealId: meal.id });
+  // Vanaf hier: meal + items in één transactie zodat een fout halverwege
+  // niet een meal zonder items achterlaat. Een 'kale' dayLog die al dan
+  // niet hierboven is aangemaakt blijft staan — geen probleem, een
+  // volgende save hergebruikt 'm.
+  const transactionID = await payload.db.beginTransaction();
+  if (transactionID === undefined || transactionID === null) {
+    return NextResponse.json(
+      { error: 'Database ondersteunt geen transacties; opslaan geannuleerd.' },
+      { status: 500 },
+    );
+  }
+
+  const txReq = { user, transactionID } as unknown as PayloadRequest;
+
+  try {
+    const meal = await payload.create({
+      collection: 'meals',
+      data: {
+        user: user.id,
+        dayLog: dayLog.id,
+        mealType: data.mealType,
+        eatenAt: eatenAt.toISOString(),
+        aiAnalyzed: data.aiAnalyzed,
+        aiConfidence: data.aiConfidence,
+      },
+      overrideAccess: false,
+      req: txReq,
+    });
+
+    // Items parallel — verifyMealBelongsToUser hook ziet de meal in
+    // dezelfde transactie via txReq.transactionID. Bij failure binnen
+    // één van de items rolled de hele transactie terug.
+    await Promise.all(
+      data.items.map((item) =>
+        payload.create({
+          collection: 'mealItems',
+          data: { ...item, meal: meal.id },
+          overrideAccess: false,
+          req: txReq,
+        }),
+      ),
+    );
+
+    await payload.db.commitTransaction(transactionID);
+    return NextResponse.json({ mealId: meal.id });
+  } catch (err) {
+    await payload.db.rollbackTransaction(transactionID).catch((rollbackErr) => {
+      console.error('[meals/save] rollback faalde:', rollbackErr);
+    });
+    const message = err instanceof Error ? err.message : '';
+    console.error('[meals/save] mislukt:', err);
+    if (/permission|forbidden|access/i.test(message)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
+    }
+    return NextResponse.json({ error: 'Opslaan mislukt' }, { status: 500 });
+  }
 }
