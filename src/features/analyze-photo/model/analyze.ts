@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { getVisionModel } from '@/shared/api/gemini';
+import {
+  GEMINI_FALLBACK_MODEL,
+  GEMINI_PRIMARY_MODEL,
+  getVisionModel,
+  isQuotaError,
+  type GeminiModelName,
+} from '@/shared/api/gemini';
 import type { PhotoAnalysis } from '@/entities/meal';
 
 const AnalysisSchema = z.object({
@@ -85,7 +91,34 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return Buffer.from(buffer).toString('base64');
 }
 
-export async function analyzePhoto(file: File, apiKey: string): Promise<PhotoAnalysis> {
+export type AnalyzeResult = {
+  analysis: PhotoAnalysis;
+  // Welk model uiteindelijk antwoord gaf — handig voor UX-melding wanneer
+  // we automatisch zijn teruggevallen op lite na een quota-hit.
+  model: GeminiModelName;
+};
+
+async function callModel(
+  apiKey: string,
+  modelName: GeminiModelName,
+  base64: string,
+  mimeType: GeminiImageMimeType,
+): Promise<PhotoAnalysis> {
+  const result = await getVisionModel(apiKey, modelName).generateContent([
+    SYSTEM_PROMPT,
+    { inlineData: { data: base64, mimeType } },
+  ]);
+  const text = result.response.text();
+  try {
+    const parsed = JSON.parse(text);
+    return AnalysisSchema.parse(parsed);
+  } catch (err) {
+    console.error('Failed to parse Gemini response:', text, err);
+    throw new Error('AI-analyse gaf geen geldig resultaat. Probeer een andere foto.');
+  }
+}
+
+export async function analyzePhoto(file: File, apiKey: string): Promise<AnalyzeResult> {
   const buffer = await file.arrayBuffer();
   const view = new Uint8Array(buffer);
   const mimeType = detectImageType(view);
@@ -94,17 +127,16 @@ export async function analyzePhoto(file: File, apiKey: string): Promise<PhotoAna
   }
   const base64 = arrayBufferToBase64(buffer);
 
-  const result = await getVisionModel(apiKey).generateContent([
-    SYSTEM_PROMPT,
-    { inlineData: { data: base64, mimeType } },
-  ]);
-
-  const text = result.response.text();
+  // Probeer eerst flash; valt automatisch terug op lite zodra Gemini
+  // 429/quota teruggeeft. Andere fouten propageren direct zodat de UI
+  // een echte foutmelding kan tonen.
   try {
-    const parsed = JSON.parse(text);
-    return AnalysisSchema.parse(parsed);
+    const analysis = await callModel(apiKey, GEMINI_PRIMARY_MODEL, base64, mimeType);
+    return { analysis, model: GEMINI_PRIMARY_MODEL };
   } catch (err) {
-    console.error('Failed to parse Gemini response:', text, err);
-    throw new Error('AI-analyse gaf geen geldig resultaat. Probeer een andere foto.');
+    if (!isQuotaError(err)) throw err;
+    console.warn('[analyzePhoto] flash quota hit — fallback naar lite');
+    const analysis = await callModel(apiKey, GEMINI_FALLBACK_MODEL, base64, mimeType);
+    return { analysis, model: GEMINI_FALLBACK_MODEL };
   }
 }

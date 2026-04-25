@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector, pushToast } from '@/shared/store';
 import { getApiErrorMessage } from '@/shared/lib/api';
 import { useHasGeminiKey } from '@/shared/lib/gemini-key-storage';
+import { GEMINI_FALLBACK_MODEL } from '@/shared/api/gemini';
 import { useSaveMeal } from '@/entities/meal';
 import { useAnalyzePhoto } from '../api/useAnalyzePhoto';
 import { analysisSucceeded, wizardReset } from '../model/slice';
@@ -41,6 +42,14 @@ export function AddMealPhotoFlow() {
     analyze.mutate(file, {
       onSuccess: (res) => {
         dispatch(analysisSucceeded(res.analysis));
+        if (res.model === GEMINI_FALLBACK_MODEL) {
+          dispatch(
+            pushToast({
+              type: 'info',
+              message: 'Quota van Gemini Flash bereikt — gebruik Flash Lite als fallback.',
+            }),
+          );
+        }
       },
     });
   };

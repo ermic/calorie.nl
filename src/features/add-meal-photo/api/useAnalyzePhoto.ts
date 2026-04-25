@@ -3,12 +3,14 @@
 import { useMutation } from '@tanstack/react-query';
 import { analyzePhoto } from '@/features/analyze-photo';
 import { getGeminiKey } from '@/shared/lib/gemini-key-storage';
+import type { GeminiModelName } from '@/shared/api/gemini';
 import type { PhotoAnalysis } from '@/entities/meal';
 
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 export type AnalyzeResponse = {
   analysis: PhotoAnalysis;
+  model: GeminiModelName;
 };
 
 // Browser-side: roep Gemini direct aan met de user's eigen API key uit
@@ -25,8 +27,7 @@ export function useAnalyzePhoto() {
       if (!apiKey) {
         throw new Error('GEMINI_API_KEY_MISSING');
       }
-      const analysis = await analyzePhoto(file, apiKey);
-      return { analysis };
+      return analyzePhoto(file, apiKey);
     },
   });
 }
