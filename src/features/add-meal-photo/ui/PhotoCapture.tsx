@@ -1,6 +1,7 @@
 'use client';
 
-import { Camera, ImageUp, Loader2 } from 'lucide-react';
+import { Camera, ImageUp, KeyRound, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card } from '@/shared/ui';
 import { cn } from '@/shared/lib/cn';
@@ -11,9 +12,10 @@ export type PhotoCaptureProps = {
   onAnalyze: (file: File) => void;
   pending: boolean;
   error: string | null;
+  hasKey: boolean;
 };
 
-export function PhotoCapture({ onAnalyze, pending, error }: PhotoCaptureProps) {
+export function PhotoCapture({ onAnalyze, pending, error, hasKey }: PhotoCaptureProps) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -41,6 +43,32 @@ export function PhotoCapture({ onAnalyze, pending, error }: PhotoCaptureProps) {
   };
 
   const shownError = localError ?? error;
+
+  if (!hasKey) {
+    return (
+      <Card padded className="space-y-3">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+            <KeyRound size={20} aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-semibold">Eerst een API key instellen</h2>
+            <p className="mt-1 text-xs text-ink-muted">
+              Foto-analyse roept Gemini direct vanuit je browser aan met je eigen sleutel — wij slaan
+              hem nooit op. Stel hem in op je profiel.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/profile"
+          className="inline-flex h-11 items-center gap-2 rounded-full bg-primary-600 text-white px-5 text-sm font-medium hover:bg-primary-700"
+        >
+          <KeyRound size={18} aria-hidden />
+          Sleutel instellen
+        </Link>
+      </Card>
+    );
+  }
 
   return (
     <Card padded className="space-y-4">

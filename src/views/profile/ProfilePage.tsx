@@ -1,7 +1,7 @@
 import { AppHeader } from '@/widgets/app-shell';
 import { Card } from '@/shared/ui';
 import { LogoutButton } from '@/features/auth';
-import { ProfileForm } from '@/features/update-profile';
+import { ApiKeyCard, ProfileForm } from '@/features/update-profile';
 import { GoalForm } from '@/features/set-daily-goal';
 import { requireUser } from '@/shared/lib/auth-guard';
 
@@ -25,6 +25,7 @@ export async function ProfilePage() {
 
         <GoalForm user={user} />
         <ProfileForm user={user} />
+        <ApiKeyCard />
 
         <div className="flex justify-center pt-2">
           <LogoutButton />

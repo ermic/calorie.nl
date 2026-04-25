@@ -1,9 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector, pushToast } from '@/shared/store';
 import { getApiErrorMessage } from '@/shared/lib/api';
+import { useHasGeminiKey } from '@/shared/lib/gemini-key-storage';
 import { useSaveMeal } from '@/entities/meal';
 import { useAnalyzePhoto } from '../api/useAnalyzePhoto';
 import { analysisSucceeded, wizardReset } from '../model/slice';
@@ -14,9 +15,18 @@ export function AddMealPhotoFlow() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const { step, items, mealType, confidence } = useAppSelector((s) => s.addMealPhoto);
+  const hasKey = useHasGeminiKey();
+  const [hydrated, setHydrated] = useState(false);
 
   const analyze = useAnalyzePhoto();
   const save = useSaveMeal();
+
+  // Voorkomt hydration-mismatch op de 'sleutel-instellen'-card: server
+  // ziet null (no key), client ziet pas na hydration de echte status.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHydrated(true);
+  }, []);
 
   // Reset zowel bij mount (verse mealType-guess op basis van huidige tijd)
   // als bij unmount (volgende bezoek start schoon).
@@ -72,11 +82,14 @@ export function AddMealPhotoFlow() {
     );
   }
 
+  if (!hydrated) return null;
+
   return (
     <PhotoCapture
       onAnalyze={onAnalyze}
       pending={analyze.isPending}
       error={analyze.isError ? getApiErrorMessage(analyze.error, 'Analyse mislukt.') : null}
+      hasKey={hasKey}
     />
   );
 }

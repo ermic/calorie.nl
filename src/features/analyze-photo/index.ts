@@ -1,1 +1,1 @@
-export { analyzePhoto, type GeminiImageMimeType } from './model/analyze';
+export { analyzePhoto, detectImageType, type GeminiImageMimeType } from './model/analyze';

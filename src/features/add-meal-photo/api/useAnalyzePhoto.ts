@@ -1,23 +1,32 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { apiFetch } from '@/shared/lib/api';
+import { analyzePhoto } from '@/features/analyze-photo';
+import { getGeminiKey } from '@/shared/lib/gemini-key-storage';
 import type { PhotoAnalysis } from '@/entities/meal';
+
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 export type AnalyzeResponse = {
   analysis: PhotoAnalysis;
-  creditsRemaining: number | null;
 };
 
+// Browser-side: roep Gemini direct aan met de user's eigen API key uit
+// localStorage. De sleutel raakt onze server niet aan, dus een DB- of
+// server-leak exposed geen API-keys. User's eigen Gemini-quota is de
+// rate-limit; we doen geen server-side credit-tracking meer.
 export function useAnalyzePhoto() {
   return useMutation({
     mutationFn: async (file: File): Promise<AnalyzeResponse> => {
-      const form = new FormData();
-      form.append('photo', file);
-      return apiFetch<AnalyzeResponse>('/api/meals/analyze-photo', {
-        method: 'POST',
-        body: form,
-      });
+      if (file.size > MAX_FILE_BYTES) {
+        throw new Error(`Foto te groot (max ${Math.floor(MAX_FILE_BYTES / 1024 / 1024)}MB)`);
+      }
+      const apiKey = getGeminiKey();
+      if (!apiKey) {
+        throw new Error('GEMINI_API_KEY_MISSING');
+      }
+      const analysis = await analyzePhoto(file, apiKey);
+      return { analysis };
     },
   });
 }
