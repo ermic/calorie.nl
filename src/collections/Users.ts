@@ -30,8 +30,11 @@ const lockPrivilegedFieldsOnSelfWrite: CollectionBeforeValidateHook = ({
     mutable.creditsResetAt = new Date();
     mutable.role = 'user';
   } else if (isSelfUpdate) {
-    // Patch-based: veld weglaten = bestaande waarde blijft staan.
-    for (const field of PRIVILEGED_FIELDS) delete mutable[field];
+    // Reset naar originalDoc — 'delete' zou required-validatie laten falen
+    // omdat collection-beforeValidate ná de field-fallback draait, dus na
+    // verwijderen wordt er geen waarde meer teruggezet.
+    const original = originalDoc as Record<string, unknown>;
+    for (const field of PRIVILEGED_FIELDS) mutable[field] = original[field];
   }
 
   return data;
