@@ -35,6 +35,7 @@ const slice = createSlice({
         protein: Math.round(i.protein),
         carbs: Math.round(i.carbs),
         fat: Math.round(i.fat),
+        nevoCode: i.nevoCode,
       }));
       state.confidence = action.payload.confidence;
       state.notes = action.payload.notes ?? null;

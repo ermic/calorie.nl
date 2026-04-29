@@ -8,6 +8,8 @@ export type PhotoAnalysisItem = {
   protein: number;
   carbs: number;
   fat: number;
+  // Optioneel — gevuld bij NEVO-pipeline, leeg bij oude analyses.
+  nevoCode?: number;
 };
 
 export type PhotoAnalysis = {

@@ -21,6 +21,9 @@ export type EditableMealItem = {
   protein: number;
   carbs: number;
   fat: number;
+  // Pipeline-context: gezet wanneer de macros uit NEVO komen, leeg bij
+  // handmatige toevoeging of upgrades vanuit andere bronnen.
+  nevoCode?: number;
 };
 
 export type MealTotals = {

@@ -1,16 +1,17 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector, pushToast } from '@/shared/store';
 import { getApiErrorMessage } from '@/shared/lib/api';
 import { useHasGeminiKey } from '@/shared/lib/gemini-key-storage';
-import { GEMINI_FALLBACK_MODEL } from '@/shared/api/gemini';
 import { useSaveMeal } from '@/entities/meal';
+import type { PipelineLogEntry } from '@/features/analyze-photo';
 import { useAnalyzePhoto } from '../api/useAnalyzePhoto';
 import { analysisSucceeded, wizardReset } from '../model/slice';
 import { PhotoCapture } from './PhotoCapture';
 import { ReviewStep } from './ReviewStep';
+import { PipelineLogPane } from './PipelineLogPane';
 
 export function AddMealPhotoFlow() {
   const dispatch = useAppDispatch();
@@ -18,8 +19,13 @@ export function AddMealPhotoFlow() {
   const { step, items, mealType, confidence } = useAppSelector((s) => s.addMealPhoto);
   const hasKey = useHasGeminiKey();
   const [hydrated, setHydrated] = useState(false);
+  const [logs, setLogs] = useState<PipelineLogEntry[]>([]);
 
-  const analyze = useAnalyzePhoto();
+  const pushLog = useCallback((entry: Omit<PipelineLogEntry, 'ts'>) => {
+    setLogs((prev) => [...prev, { ...entry, ts: Date.now() }]);
+  }, []);
+
+  const analyze = useAnalyzePhoto(pushLog);
   const save = useSaveMeal();
 
   // Voorkomt hydration-mismatch op de 'sleutel-instellen'-card: server
@@ -39,17 +45,10 @@ export function AddMealPhotoFlow() {
   }, [dispatch]);
 
   const onAnalyze = (file: File) => {
+    setLogs([]);
     analyze.mutate(file, {
       onSuccess: (res) => {
         dispatch(analysisSucceeded(res.analysis));
-        if (res.model === GEMINI_FALLBACK_MODEL) {
-          dispatch(
-            pushToast({
-              type: 'info',
-              message: 'Quota van Gemini Flash bereikt — gebruik Flash Lite als fallback.',
-            }),
-          );
-        }
       },
     });
   };
@@ -81,24 +80,32 @@ export function AddMealPhotoFlow() {
     );
   };
 
+  const logPane = <PipelineLogPane logs={logs} onClear={() => setLogs([])} />;
+
   if (step === 'review') {
     return (
-      <ReviewStep
-        onSave={onSave}
-        saving={save.isPending}
-        error={save.isError ? getApiErrorMessage(save.error, 'Opslaan mislukt.') : null}
-      />
+      <div className="space-y-4">
+        <ReviewStep
+          onSave={onSave}
+          saving={save.isPending}
+          error={save.isError ? getApiErrorMessage(save.error, 'Opslaan mislukt.') : null}
+        />
+        {logPane}
+      </div>
     );
   }
 
   if (!hydrated) return null;
 
   return (
-    <PhotoCapture
-      onAnalyze={onAnalyze}
-      pending={analyze.isPending}
-      error={analyze.isError ? getApiErrorMessage(analyze.error, 'Analyse mislukt.') : null}
-      hasKey={hasKey}
-    />
+    <div className="space-y-4">
+      <PhotoCapture
+        onAnalyze={onAnalyze}
+        pending={analyze.isPending}
+        error={analyze.isError ? getApiErrorMessage(analyze.error, 'Analyse mislukt.') : null}
+        hasKey={hasKey}
+      />
+      {logPane}
+    </div>
   );
 }

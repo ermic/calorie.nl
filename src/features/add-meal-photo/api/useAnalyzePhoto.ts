@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { analyzePhoto } from '@/features/analyze-photo';
+import { analyzePhoto, type PipelineLogger } from '@/features/analyze-photo';
 import { getGeminiKey } from '@/shared/lib/gemini-key-storage';
 import type { GeminiModelName } from '@/shared/api/gemini';
 import type { PhotoAnalysis } from '@/entities/meal';
@@ -17,7 +17,11 @@ export type AnalyzeResponse = {
 // localStorage. De sleutel raakt onze server niet aan, dus een DB- of
 // server-leak exposed geen API-keys. User's eigen Gemini-quota is de
 // rate-limit; we doen geen server-side credit-tracking meer.
-export function useAnalyzePhoto() {
+//
+// `logger` mag elke event-callback zijn — in de wizard wordt het
+// gekoppeld aan een React-state zodat de pipeline-stappen real-time
+// in de UI verschijnen.
+export function useAnalyzePhoto(logger?: PipelineLogger) {
   return useMutation({
     mutationFn: async (file: File): Promise<AnalyzeResponse> => {
       if (file.size > MAX_FILE_BYTES) {
@@ -27,7 +31,7 @@ export function useAnalyzePhoto() {
       if (!apiKey) {
         throw new Error('GEMINI_API_KEY_MISSING');
       }
-      return analyzePhoto(file, apiKey);
+      return analyzePhoto(file, apiKey, logger);
     },
   });
 }

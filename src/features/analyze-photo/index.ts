@@ -1,1 +1,7 @@
-export { analyzePhoto, detectImageType, type GeminiImageMimeType } from './model/analyze';
+export {
+  analyzePhoto,
+  detectImageType,
+  type GeminiImageMimeType,
+  type PipelineLogEntry,
+  type PipelineLogger,
+} from './model/analyze';
