@@ -39,12 +39,17 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    overflow-x: clip;
   }
 
   body {
     background: var(--color-surface-muted);
     color: var(--color-ink);
     font-family: var(--font-sans), system-ui, sans-serif;
+    /* iOS Safari scrollt anders horizontaal bij focus op velden in de
+       rechter-kolom (visual-viewport quirk) — clip ipv hidden zodat
+       sticky/fixed positioning niet breekt. */
+    overflow-x: clip;
   }
 
   :focus-visible {

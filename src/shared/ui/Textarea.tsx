@@ -23,7 +23,7 @@ export function Textarea({ label, hint, error, id, className, ref, ...props }: T
         aria-describedby={hintId}
         aria-invalid={error ? true : undefined}
         className={cn(
-          'rounded-xl border bg-surface px-3 py-2 text-sm outline-none resize-y min-h-[88px]',
+          'rounded-xl border bg-surface px-3 py-2 text-base sm:text-sm outline-none resize-y min-h-[88px]',
           'border-ink/15 placeholder:text-ink-muted',
           'focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20',
           error && 'border-danger focus:border-danger focus:ring-danger/20',

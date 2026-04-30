@@ -42,7 +42,7 @@ export function Input({
           id={inputId}
           aria-describedby={hintId}
           aria-invalid={error ? true : undefined}
-          className={cn('flex-1 bg-transparent outline-none text-sm placeholder:text-ink-muted', className)}
+          className={cn('flex-1 bg-transparent outline-none text-base sm:text-sm placeholder:text-ink-muted', className)}
           {...props}
         />
         {suffix && <span className="text-ink-muted text-sm">{suffix}</span>}
