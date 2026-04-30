@@ -35,13 +35,11 @@ export async function DELETE(
   }
 
   // Last-method-guard: een user moet altijd minstens één manier hebben
-  // om in te loggen. hasPassword=true OR een ander provider OR (later)
-  // een passkey is voldoende.
-  // 'passkey'-providers in users.providers zijn placeholders — echte
-  // passkey-credentials komen in fase 3 in een aparte sub-collection.
-  // Voor nu tellen we dus alleen non-passkey-providers.
+  // om in te loggen. hasPassword=true OR een ander niet-passkey-provider
+  // OR een geregistreerde passkey-credential is voldoende.
   const remainingActiveProviders = remaining.filter((p) => p.provider !== 'passkey');
-  if (!user.hasPassword && remainingActiveProviders.length === 0) {
+  const passkeyCount = (user.passkeyCredentials ?? []).length;
+  if (!user.hasPassword && remainingActiveProviders.length === 0 && passkeyCount === 0) {
     return NextResponse.json(
       {
         error:

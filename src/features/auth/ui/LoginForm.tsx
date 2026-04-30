@@ -7,6 +7,7 @@ import { Button, Input } from '@/shared/ui';
 import { LoginSchema, type LoginInput } from '@/shared/lib/schemas';
 import { useLogin } from '../api/useLogin';
 import { GoogleButton } from './GoogleButton';
+import { PasskeyLoginButton } from './PasskeyLoginButton';
 
 export function LoginForm() {
   const login = useLogin();
@@ -64,6 +65,7 @@ export function LoginForm() {
       </div>
 
       <GoogleButton />
+      <PasskeyLoginButton />
 
       <p className="text-sm text-ink-muted text-center">
         Nog geen account?{' '}

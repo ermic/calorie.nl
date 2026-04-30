@@ -13,7 +13,7 @@ export async function login(page: Page, key: TestUserKey): Promise<void> {
   await page.goto('/login');
   await page.getByLabel('E-mail').fill(user.email);
   await page.getByLabel('Wachtwoord').fill(user.password);
-  await page.getByRole('button', { name: /inloggen/i }).click();
+  await page.getByRole('button', { name: 'Inloggen', exact: true }).click();
   await page.waitForURL('/');
 }
 

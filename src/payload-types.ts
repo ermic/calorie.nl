@@ -146,6 +146,28 @@ export interface User {
         id?: string | null;
       }[]
     | null;
+  passkeyCredentials?:
+    | {
+        credentialId: string;
+        publicKey: string;
+        counter: number;
+        transports?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        deviceType?: ('singleDevice' | 'multiDevice') | null;
+        backedUp?: boolean | null;
+        label?: string | null;
+        createdAt?: string | null;
+        lastUsedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   role: 'user' | 'admin';
   plan: 'FREE' | 'PREMIUM' | 'PRO';
   aiPhotoCredits: number;
@@ -413,6 +435,20 @@ export interface UsersSelect<T extends boolean = true> {
         email?: T;
         emailVerified?: T;
         linkedAt?: T;
+        id?: T;
+      };
+  passkeyCredentials?:
+    | T
+    | {
+        credentialId?: T;
+        publicKey?: T;
+        counter?: T;
+        transports?: T;
+        deviceType?: T;
+        backedUp?: T;
+        label?: T;
+        createdAt?: T;
+        lastUsedAt?: T;
         id?: T;
       };
   role?: T;

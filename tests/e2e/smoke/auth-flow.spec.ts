@@ -14,7 +14,7 @@ test('inloggen met fout wachtwoord toont een foutmelding', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('E-mail').fill(TEST_USERS.a.email);
   await page.getByLabel('Wachtwoord').fill('niet-correct');
-  await page.getByRole('button', { name: /inloggen/i }).click();
+  await page.getByRole('button', { name: 'Inloggen', exact: true }).click();
   await expect(page.getByText(/onjuist|incorrect|provided/i)).toBeVisible({ timeout: 10_000 });
   await expect(page).toHaveURL(/\/login$/);
 });

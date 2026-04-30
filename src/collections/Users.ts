@@ -159,6 +159,31 @@ export const Users: CollectionConfig = {
       ],
     },
     {
+      // WebAuthn-credentials. Alleen schrijfbaar via server-side mutaties.
+      name: 'passkeyCredentials',
+      type: 'array',
+      access: { update: () => false },
+      admin: { readOnly: true },
+      fields: [
+        { name: 'credentialId', type: 'text', required: true, unique: true, index: true },
+        { name: 'publicKey', type: 'text', required: true },
+        { name: 'counter', type: 'number', required: true, defaultValue: 0 },
+        { name: 'transports', type: 'json' },
+        {
+          name: 'deviceType',
+          type: 'select',
+          options: [
+            { label: 'Single device', value: 'singleDevice' },
+            { label: 'Multi device', value: 'multiDevice' },
+          ],
+        },
+        { name: 'backedUp', type: 'checkbox', defaultValue: false },
+        { name: 'label', type: 'text' },
+        { name: 'createdAt', type: 'date', defaultValue: () => new Date() },
+        { name: 'lastUsedAt', type: 'date' },
+      ],
+    },
+    {
       name: 'role',
       type: 'select',
       options: [
