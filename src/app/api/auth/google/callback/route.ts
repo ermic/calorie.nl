@@ -4,7 +4,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { hashToken } from '@/shared/lib/tokens';
 import { getPayload } from '@/shared/lib/payload';
 import { requireServerUrl } from '@/shared/lib/server-url';
-import { issueSessionForUser } from '@/shared/lib/sessions';
+import { issueSessionCookieOnResponse } from '@/shared/lib/sessions';
 import {
   linkProviderToUser,
   resolveOrCreateUserForProvider,
@@ -54,12 +54,18 @@ export async function GET(req: NextRequest) {
   const payload = await getPayload();
 
   // Lazy cleanup van verlopen challenges, probabilistisch (~5%).
+  // Errors in de cleanup mogen de OAuth-flow niet brekken — de cleanup
+  // is best-effort.
   if (Math.random() < 0.05) {
-    await payload.delete({
-      collection: 'loginChallenges',
-      where: { expiresAt: { less_than: new Date().toISOString() } },
-      overrideAccess: true,
-    });
+    try {
+      await payload.delete({
+        collection: 'loginChallenges',
+        where: { expiresAt: { less_than: new Date().toISOString() } },
+        overrideAccess: true,
+      });
+    } catch (err) {
+      payload.logger.error({ err }, 'google oauth lazy challenge-cleanup failed');
+    }
   }
 
   const result = await payload.find({
@@ -152,12 +158,38 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${base}/login?error=oauth_provider_error`, 303);
   }
 
+  // Geen 303 naar `${returnTo}` — die request krijgt van de browser
+  // `Sec-Fetch-Site: cross-site` (Google staat in de redirect-chain) en
+  // dan weigert payload.auth de net-uitgegeven cookie. We renderen
+  // daarom een mini-HTML met een client-side redirect (meta-refresh +
+  // JS-fallback). Die JS-/meta-navigatie wordt vanuit ons eigen origin
+  // geïnitieerd → `Sec-Fetch-Site: same-origin` → cookie geaccepteerd.
+  const target = `${base}${returnTo}`;
+  // HTML-attribute escape voor de meta-refresh url.
+  const attrEscaped = target.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  // JSON-string escape + extra `<` → `<` zodat een opzettelijke
+  // returnTo met `</script>` niet uit de script-tag kan breken.
+  const jsLiteral = JSON.stringify(target).replace(/</g, '\\u003c');
+  const html = `<!doctype html>
+<html lang="nl"><head>
+<meta charset="utf-8">
+<title>Inloggen…</title>
+<meta http-equiv="refresh" content="0; url=${attrEscaped}">
+<script>window.location.replace(${jsLiteral});</script>
+</head><body><p>Inloggen voltooid, een moment…</p></body></html>`;
+  const response = new NextResponse(html, {
+    status: 200,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+    },
+  });
   try {
-    await issueSessionForUser(user);
+    await issueSessionCookieOnResponse(user, response);
   } catch (err) {
     payload.logger.error({ err, userId: user.id }, 'google oauth issueSession failed');
     return NextResponse.redirect(`${base}/login?error=oauth_provider_error`, 303);
   }
 
-  return NextResponse.redirect(`${base}${returnTo}`, 303);
+  return response;
 }

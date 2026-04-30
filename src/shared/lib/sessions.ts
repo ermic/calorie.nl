@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'crypto';
 import { cookies } from 'next/headers';
+import type { NextResponse } from 'next/server';
 import { SignJWT, decodeJwt } from 'jose';
 import { sql } from '@payloadcms/db-postgres';
 import { getPayload } from './payload';
@@ -100,16 +101,33 @@ export async function createSessionForUser(user: User): Promise<IssuedSession> {
   return { token, sid, expiresAt: new Date(expS * 1000) };
 }
 
+function sessionCookieOptions(expiresAt: Date) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    expires: expiresAt,
+  };
+}
+
 export async function issueSessionForUser(user: User): Promise<void> {
   const session = await createSessionForUser(user);
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, session.token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    expires: session.expiresAt,
-  });
+  cookieStore.set(COOKIE_NAME, session.token, sessionCookieOptions(session.expiresAt));
+}
+
+// Variant voor route-handlers die een NextResponse teruggeven (m.n.
+// redirects). cookies().set() merget niet altijd betrouwbaar op een
+// NextResponse.redirect — dan mist de eerste request na de redirect de
+// sessie-cookie, en stranden Google/passkey-callbacks op /login. Door
+// de cookie expliciet op de response te zetten omzeilen we dat.
+export async function issueSessionCookieOnResponse(
+  user: User,
+  response: NextResponse,
+): Promise<void> {
+  const session = await createSessionForUser(user);
+  response.cookies.set(COOKIE_NAME, session.token, sessionCookieOptions(session.expiresAt));
 }
 
 // Verwijdert alle sessies van een user behalve (optioneel) één om te
