@@ -20,6 +20,18 @@ export function AddMealPhotoFlow() {
   const hasKey = useHasGeminiKey();
   const [hydrated, setHydrated] = useState(false);
   const [logs, setLogs] = useState<PipelineLogEntry[]>([]);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(photoFile);
+    setPhotoUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photoFile]);
 
   const pushLog = useCallback((entry: Omit<PipelineLogEntry, 'ts'>) => {
     setLogs((prev) => [...prev, { ...entry, ts: Date.now() }]);
@@ -46,12 +58,17 @@ export function AddMealPhotoFlow() {
 
   const onAnalyze = (file: File) => {
     setLogs([]);
+    setPhotoFile(file);
     analyze.mutate(file, {
       onSuccess: (res) => {
         dispatch(analysisSucceeded(res.analysis));
       },
     });
   };
+
+  useEffect(() => {
+    if (step === 'capture') setPhotoFile(null);
+  }, [step]);
 
   const onSave = () => {
     save.mutate(
@@ -89,6 +106,7 @@ export function AddMealPhotoFlow() {
           onSave={onSave}
           saving={save.isPending}
           error={save.isError ? getApiErrorMessage(save.error, 'Opslaan mislukt.') : null}
+          photoUrl={photoUrl}
         />
         {logPane}
       </div>

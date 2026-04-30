@@ -17,9 +17,10 @@ export type ReviewStepProps = {
   onSave: () => void;
   saving: boolean;
   error: string | null;
+  photoUrl: string | null;
 };
 
-export function ReviewStep({ onSave, saving, error }: ReviewStepProps) {
+export function ReviewStep({ onSave, saving, error, photoUrl }: ReviewStepProps) {
   const dispatch = useAppDispatch();
   const { items, mealType, confidence, notes } = useAppSelector((s) => s.addMealPhoto);
   const totals = sumMealItems(items);
@@ -27,6 +28,17 @@ export function ReviewStep({ onSave, saving, error }: ReviewStepProps) {
 
   return (
     <div className="space-y-4">
+      {photoUrl && (
+        <Card padded={false} className="overflow-hidden bg-ink">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photoUrl}
+            alt="Geanalyseerde foto"
+            className="aspect-[4/3] w-full object-contain"
+          />
+        </Card>
+      )}
+
       {lowConfidence && (
         <Card padded className="border border-accent-yellow/60 bg-accent-yellow/10">
           <p className="text-sm text-ink">
