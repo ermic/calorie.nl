@@ -7,6 +7,7 @@ export { useResetPassword } from './api/useResetPassword';
 export { useResendVerification } from './api/useResendVerification';
 export { useChangePassword } from './api/useChangePassword';
 export { useChangeEmail } from './api/useChangeEmail';
+export { useUnlinkProvider, type UnlinkableProvider } from './api/useUnlinkProvider';
 export { LoginForm } from './ui/LoginForm';
 export { RegisterForm } from './ui/RegisterForm';
 export { LogoutButton } from './ui/LogoutButton';

@@ -3,6 +3,7 @@ import { Card } from '@/shared/ui';
 import { ChangeEmailForm, ChangePasswordForm, LogoutButton } from '@/features/auth';
 import { ApiKeyCard, ProfileForm } from '@/features/update-profile';
 import { GoalForm } from '@/features/set-daily-goal';
+import { AuthMethodsSection } from '@/widgets/auth-methods-section';
 import { requireUser } from '@/shared/lib/auth-guard';
 
 export async function ProfilePage() {
@@ -38,6 +39,10 @@ export async function ProfilePage() {
             <ChangeEmailForm />
           </Card>
         )}
+
+        <Card padded>
+          <AuthMethodsSection />
+        </Card>
 
         <div className="flex justify-center pt-2">
           <LogoutButton />
