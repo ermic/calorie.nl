@@ -19,11 +19,15 @@ export async function GET(req: NextRequest) {
   const tokenHash = hashToken(token);
 
   // Lazy cleanup van verlopen tokens — voorkomt onbeperkte DB-groei.
-  await payload.delete({
-    collection: 'emailVerifications',
-    where: { expiresAt: { less_than: new Date().toISOString() } },
-    overrideAccess: true,
-  });
+  // Probabilistisch (~5%) zodat we niet bij elke valid-click een
+  // schrijvende DELETE doen onder load.
+  if (Math.random() < 0.05) {
+    await payload.delete({
+      collection: 'emailVerifications',
+      where: { expiresAt: { less_than: new Date().toISOString() } },
+      overrideAccess: true,
+    });
+  }
 
   const result = await payload.find({
     collection: 'emailVerifications',

@@ -20,12 +20,14 @@ export async function GET(req: NextRequest) {
   const payload = await getPayload();
   const tokenHash = hashToken(token);
 
-  // Lazy cleanup van verlopen tokens.
-  await payload.delete({
-    collection: 'emailVerifications',
-    where: { expiresAt: { less_than: new Date().toISOString() } },
-    overrideAccess: true,
-  });
+  // Lazy cleanup van verlopen tokens, probabilistisch (~5%).
+  if (Math.random() < 0.05) {
+    await payload.delete({
+      collection: 'emailVerifications',
+      where: { expiresAt: { less_than: new Date().toISOString() } },
+      overrideAccess: true,
+    });
+  }
 
   const result = await payload.find({
     collection: 'emailVerifications',

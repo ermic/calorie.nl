@@ -6,6 +6,7 @@ import * as migration_20260430_115018_add_email_verification_and_drift_catchup f
 import * as migration_20260430_122100_add_email_verifications_collection from './20260430_122100_add_email_verifications_collection';
 import * as migration_20260430_131542_add_email_verification_kind from './20260430_131542_add_email_verification_kind';
 import * as migration_20260430_134708_add_providers_and_login_challenges from './20260430_134708_add_providers_and_login_challenges';
+import * as migration_20260430_143618_add_users_sessions_expires_at_idx from './20260430_143618_add_users_sessions_expires_at_idx';
 
 export const migrations = [
   {
@@ -46,6 +47,11 @@ export const migrations = [
   {
     up: migration_20260430_134708_add_providers_and_login_challenges.up,
     down: migration_20260430_134708_add_providers_and_login_challenges.down,
-    name: '20260430_134708_add_providers_and_login_challenges'
+    name: '20260430_134708_add_providers_and_login_challenges',
+  },
+  {
+    up: migration_20260430_143618_add_users_sessions_expires_at_idx.up,
+    down: migration_20260430_143618_add_users_sessions_expires_at_idx.down,
+    name: '20260430_143618_add_users_sessions_expires_at_idx'
   },
 ];

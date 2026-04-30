@@ -53,12 +53,14 @@ export async function GET(req: NextRequest) {
 
   const payload = await getPayload();
 
-  // Lazy cleanup van verlopen challenges.
-  await payload.delete({
-    collection: 'loginChallenges',
-    where: { expiresAt: { less_than: new Date().toISOString() } },
-    overrideAccess: true,
-  });
+  // Lazy cleanup van verlopen challenges, probabilistisch (~5%).
+  if (Math.random() < 0.05) {
+    await payload.delete({
+      collection: 'loginChallenges',
+      where: { expiresAt: { less_than: new Date().toISOString() } },
+      overrideAccess: true,
+    });
+  }
 
   const result = await payload.find({
     collection: 'loginChallenges',

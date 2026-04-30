@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getPayload } from '@/shared/lib/payload';
 import { getRouteUser } from '@/shared/lib/route-auth';
+import { getCurrentSidFromCookie, revokeAllSessionsExcept } from '@/shared/lib/sessions';
 import { ChangePasswordSchema } from '@/shared/lib/schemas';
 import { passwordChangedEmail } from '@/shared/email/passwordChanged';
 
@@ -100,6 +101,17 @@ export async function POST(request: Request) {
     data: { password: newPassword },
     overrideAccess: true,
   });
+
+  // Forceer re-login op andere devices: revoke alle sessies behalve de
+  // huidige (de cookie waarmee deze request kwam). Best-effort: bij een
+  // failure is alleen sessions-revocation mis, het wachtwoord is al
+  // gewijzigd.
+  try {
+    const currentSid = await getCurrentSidFromCookie();
+    await revokeAllSessionsExcept(user.id, currentSid ?? undefined);
+  } catch (err) {
+    payload.logger.error({ err, userId: user.id }, 'session revoke after password-change failed');
+  }
 
   // Notificatie is niet kritisch voor de wijziging zelf — log + door.
   try {
