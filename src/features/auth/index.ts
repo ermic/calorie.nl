@@ -8,6 +8,7 @@ export { useResendVerification } from './api/useResendVerification';
 export { useChangePassword } from './api/useChangePassword';
 export { useChangeEmail } from './api/useChangeEmail';
 export { useUnlinkProvider, type UnlinkableProvider } from './api/useUnlinkProvider';
+export { useDeleteAccount } from './api/useDeleteAccount';
 export { usePasskeyRegister } from './api/usePasskeyRegister';
 export { usePasskeyLogin } from './api/usePasskeyLogin';
 export { usePasskeyDelete } from './api/usePasskeyDelete';

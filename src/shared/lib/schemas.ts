@@ -62,3 +62,12 @@ export const ChangeEmailSchema = z.object({
 });
 
 export type ChangeEmailInput = z.infer<typeof ChangeEmailSchema>;
+
+export const DeleteAccountSchema = z.object({
+  currentPassword: z.string().min(1, 'Verplicht'),
+  confirm: z.literal('VERWIJDER', {
+    message: "Typ 'VERWIJDER' om te bevestigen",
+  }),
+});
+
+export type DeleteAccountInput = z.infer<typeof DeleteAccountSchema>;

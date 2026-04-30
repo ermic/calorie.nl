@@ -25,4 +25,11 @@ export const TEST_USERS = {
     password: 'e2e-secret-dddd',
     name: 'E2E Tester D',
   },
+  // Gereserveerd voor delete-account tests — global-setup re-creëert
+  // hem na een succesvolle delete via ensureUser (idempotent register).
+  e: {
+    email: 'e2e-user-e@test.local',
+    password: 'e2e-secret-eeee',
+    name: 'E2E Tester E',
+  },
 } as const;

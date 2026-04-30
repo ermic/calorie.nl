@@ -8,6 +8,7 @@ type LoginSearchParams = {
   verified?: string;
   email_changed?: string;
   email_change_revoked?: string;
+  account_deleted?: string;
   error?: string;
 };
 
@@ -19,6 +20,8 @@ function getFlag(p: LoginSearchParams): Flag | null {
     return { kind: 'success', text: 'E-mailadres gewijzigd. Log in met je nieuwe adres.' };
   if (p.email_change_revoked === '1')
     return { kind: 'success', text: 'De aangevraagde e-mailwijziging is ingetrokken.' };
+  if (p.account_deleted === '1')
+    return { kind: 'success', text: 'Je account is verwijderd. Bedankt dat je Calorietje hebt gebruikt.' };
   switch (p.error) {
     case 'verify_invalid':
       return { kind: 'error', text: 'Deze verificatielink is ongeldig of al gebruikt.' };

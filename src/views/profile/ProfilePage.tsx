@@ -4,6 +4,7 @@ import { ChangeEmailForm, ChangePasswordForm, LogoutButton } from '@/features/au
 import { ApiKeyCard, ProfileForm } from '@/features/update-profile';
 import { GoalForm } from '@/features/set-daily-goal';
 import { AuthMethodsSection } from '@/widgets/auth-methods-section';
+import { DeleteAccountSection } from '@/widgets/delete-account-section';
 import { requireUser } from '@/shared/lib/auth-guard';
 
 export async function ProfilePage() {
@@ -42,6 +43,10 @@ export async function ProfilePage() {
 
         <Card padded>
           <AuthMethodsSection />
+        </Card>
+
+        <Card padded>
+          <DeleteAccountSection />
         </Card>
 
         <div className="flex justify-center pt-2">
