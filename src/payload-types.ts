@@ -130,6 +130,8 @@ export interface UserAuthOperations {
 export interface User {
   id: number;
   name?: string | null;
+  emailVerified?: boolean | null;
+  hasPassword?: boolean | null;
   role: 'user' | 'admin';
   plan: 'FREE' | 'PREMIUM' | 'PRO';
   aiPhotoCredits: number;
@@ -348,6 +350,8 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  emailVerified?: T;
+  hasPassword?: T;
   role?: T;
   plan?: T;
   aiPhotoCredits?: T;

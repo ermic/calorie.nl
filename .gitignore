@@ -38,6 +38,9 @@ yarn-error.log*
 CLAUDE.md
 AGENTS.md
 
+# lokale mailer-utility met SMTP-credentials
+mail.py
+
 # vercel
 .vercel
 

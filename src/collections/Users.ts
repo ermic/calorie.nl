@@ -60,6 +60,20 @@ export const Users: CollectionConfig = {
   fields: [
     { name: 'name', type: 'text' },
     {
+      name: 'emailVerified',
+      type: 'checkbox',
+      defaultValue: false,
+      access: { update: () => false },
+      admin: { readOnly: true, position: 'sidebar' },
+    },
+    {
+      name: 'hasPassword',
+      type: 'checkbox',
+      defaultValue: true,
+      access: { update: () => false },
+      admin: { readOnly: true, position: 'sidebar' },
+    },
+    {
       name: 'role',
       type: 'select',
       options: [
