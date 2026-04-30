@@ -26,17 +26,23 @@ const slice = createSlice({
   initialState,
   reducers: {
     analysisSucceeded(state, action: PayloadAction<PhotoAnalysis>) {
-      state.items = action.payload.items.map((i) => ({
-        clientId: nanoid(),
-        name: i.name,
-        quantity: i.estimatedGrams,
-        unit: 'g',
-        calories: Math.round(i.calories),
-        protein: Math.round(i.protein),
-        carbs: Math.round(i.carbs),
-        fat: Math.round(i.fat),
-        nevoCode: i.nevoCode,
-      }));
+      state.items = action.payload.items.map((i) => {
+        const snapshot = {
+          name: i.name,
+          quantity: i.estimatedGrams,
+          unit: 'g',
+          calories: Math.round(i.calories),
+          protein: Math.round(i.protein),
+          carbs: Math.round(i.carbs),
+          fat: Math.round(i.fat),
+          nevoCode: i.nevoCode,
+        };
+        return {
+          clientId: nanoid(),
+          ...snapshot,
+          original: snapshot,
+        };
+      });
       state.confidence = action.payload.confidence;
       state.notes = action.payload.notes ?? null;
       state.step = 'review';

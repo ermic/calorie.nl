@@ -1,6 +1,6 @@
 'use client';
 
-import { RefreshCw, Trash2 } from 'lucide-react';
+import { RotateCcw, Trash2 } from 'lucide-react';
 import { IconButton, Input } from '@/shared/ui';
 import { cn } from '@/shared/lib/cn';
 import { parseDecimal } from '@/shared/lib/number';
@@ -37,15 +37,31 @@ export function MealItemEditor({ item, onChange, onRemove, className }: MealItem
       { nevoCode: s.nevoCode },
       {
         onSuccess: (per100g) => {
+          // Vul tegelijk een werkbare default-quantity in als de
+          // gebruiker er nog geen had — voorkomt 0 kcal direct na pick.
           const grams = item.quantity > 0 ? item.quantity : 100;
+          const unit = item.unit || 'g';
+          const scaled = scaleMacros(per100g, grams);
           onChange({
             clientId: item.clientId,
             nevoPer100g: per100g,
-            // Vul tegelijk een werkbare default-quantity in als de
-            // gebruiker er nog geen had — voorkomt 0 kcal direct na pick.
-            quantity: item.quantity > 0 ? item.quantity : 100,
-            unit: item.unit || 'g',
-            ...scaleMacros(per100g, grams),
+            quantity: grams,
+            unit,
+            ...scaled,
+            // Geef lege items hun eerste authoritative snapshot zodat
+            // undo werkt; voor analyse-/food-search-items blijft de
+            // bestaande `original` staan zodat undo de pick weer afpelt.
+            ...(item.original
+              ? {}
+              : {
+                  original: {
+                    name: s.nameNl,
+                    quantity: grams,
+                    unit,
+                    nevoCode: s.nevoCode,
+                    ...scaled,
+                  },
+                }),
           });
         },
       },
@@ -63,12 +79,14 @@ export function MealItemEditor({ item, onChange, onRemove, className }: MealItem
   };
 
   const handleReset = () => {
-    if (!item.nevoPer100g) return;
-    const grams = item.quantity > 0 ? item.quantity : 100;
+    if (!item.original) return;
     onChange({
       clientId: item.clientId,
-      quantity: item.quantity > 0 ? item.quantity : 100,
-      ...scaleMacros(item.nevoPer100g, grams),
+      ...item.original,
+      // Pick-context volgt de naam terug: als origineel geen NEVO-pick
+      // was, gooien we per100g weg zodat quantity-rescale niet meer met
+      // een vreemde curve werkt.
+      nevoPer100g: undefined,
     });
   };
 
@@ -88,13 +106,13 @@ export function MealItemEditor({ item, onChange, onRemove, className }: MealItem
           ariaLabel="Naam"
           className="flex-1"
         />
-        {item.nevoPer100g && (
+        {item.original && (
           <IconButton
-            icon={RefreshCw}
+            icon={RotateCcw}
             variant="ghost"
             size="sm"
-            aria-label="Macro's terugzetten naar NEVO-waarden"
-            title="Macro's terugzetten naar NEVO-waarden"
+            aria-label="Item terugzetten naar oorspronkelijke waarden"
+            title="Item terugzetten naar oorspronkelijke waarden"
             onClick={handleReset}
           />
         )}

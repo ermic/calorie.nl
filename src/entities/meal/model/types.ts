@@ -20,6 +20,20 @@ export type NevoPer100g = {
   fat: number;
 };
 
+// Snapshot van de "authoritative" startwaarden van een item (foto-analyse,
+// food-search of eerste autocomplete-pick). Driver voor de undo-knop in
+// de editor — niets meer dan een kopie van de macro-velden + identificatie.
+export type EditableMealItemSnapshot = {
+  name: string;
+  quantity: number;
+  unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  nevoCode?: number;
+};
+
 // Editable item gebruikt door zowel de photo- als manual-add-meal flows.
 // clientId is een nanoid voor React-keys en patch-targeting vóór opslag.
 export type EditableMealItem = {
@@ -35,8 +49,12 @@ export type EditableMealItem = {
   // handmatige toevoeging of upgrades vanuit andere bronnen.
   nevoCode?: number;
   // Per-100g macro's uit NEVO; aanwezig zodra de gebruiker een suggestie
-  // heeft gekozen. Driver voor quantity-rescale en reset-knop.
+  // heeft gekozen. Driver voor quantity-rescale.
   nevoPer100g?: NevoPer100g;
+  // Snapshot van de eerste authoritative state (analyse-resultaat,
+  // food-pick of eerste autocomplete-pick op een leeg item). Driver
+  // voor de undo-knop. Nooit overschreven na zetten.
+  original?: EditableMealItemSnapshot;
 };
 
 export type MealTotals = {

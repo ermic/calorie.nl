@@ -18,8 +18,7 @@ const initialState: AddMealManualState = {
 function scaleFromHit(hit: FoodSearchHit, grams: number): EditableMealItem {
   const factor = Math.max(0, grams) / 100;
   const nonNeg = (n: number) => Math.max(0, Math.round(n * factor));
-  return {
-    clientId: nanoid(),
+  const snapshot = {
     name: hit.brand ? `${hit.brand} · ${hit.name}` : hit.name,
     quantity: Math.max(0, grams),
     unit: 'g',
@@ -27,6 +26,11 @@ function scaleFromHit(hit: FoodSearchHit, grams: number): EditableMealItem {
     protein: nonNeg(hit.proteinPer100),
     carbs: nonNeg(hit.carbsPer100),
     fat: nonNeg(hit.fatPer100),
+  };
+  return {
+    clientId: nanoid(),
+    ...snapshot,
+    original: snapshot,
   };
 }
 
