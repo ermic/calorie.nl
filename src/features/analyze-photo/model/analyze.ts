@@ -176,6 +176,48 @@ function extractJson(text: string): string {
 }
 
 // ─── Gemini-calls ─────────────────────────────────────────────────────
+//
+// Gemini geeft bij overbelasting een 503 terug. Dat is een transient
+// fout, dus we proberen tot 3 keer met exponential backoff (1s, 2s)
+// voordat we opgeven.
+const GEMINI_MAX_ATTEMPTS = 3;
+const GEMINI_RETRY_BASE_DELAY_MS = 1000;
+
+function isGeminiOverloadError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { status?: number; message?: string };
+  if (e.status === 503) return true;
+  const msg = e.message?.toLowerCase() ?? '';
+  return msg.includes('503') || msg.includes('overloaded') || msg.includes('service unavailable');
+}
+
+async function generateContentWithRetry(
+  active: ActiveVisionModel,
+  prompt: string,
+  inline: InlineImage,
+  label: string,
+  logger: PipelineLogger,
+) {
+  for (let attempt = 1; attempt <= GEMINI_MAX_ATTEMPTS; attempt++) {
+    try {
+      return await active.client.generateContent([prompt, inline]);
+    } catch (err) {
+      if (!isGeminiOverloadError(err) || attempt === GEMINI_MAX_ATTEMPTS) {
+        throw err;
+      }
+      const delay = GEMINI_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+      logger({
+        level: 'warn',
+        message: `Gemini overbelast (${label}, poging ${attempt}/${GEMINI_MAX_ATTEMPTS}); opnieuw over ${delay}ms`,
+        data: { err: String(err) },
+      });
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  // Onbereikbaar — laatste poging gooit altijd of returnt.
+  throw new Error('Gemini retry-loop liep uit zonder resultaat');
+}
+
 async function callGemini<T extends z.ZodTypeAny>(
   active: ActiveVisionModel,
   prompt: string,
@@ -184,7 +226,7 @@ async function callGemini<T extends z.ZodTypeAny>(
   label: string,
   logger: PipelineLogger,
 ): Promise<z.infer<T>> {
-  const result = await active.client.generateContent([prompt, inline]);
+  const result = await generateContentWithRetry(active, prompt, inline, label, logger);
   const text = result.response.text();
   let parsed: unknown;
   try {
