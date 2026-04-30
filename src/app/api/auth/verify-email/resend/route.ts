@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { headers as nextHeaders } from 'next/headers';
 import { getPayload } from '@/shared/lib/payload';
+import { getRouteUser } from '@/shared/lib/route-auth';
 import { generateToken, hashToken } from '@/shared/lib/tokens';
 import { verifyEmail } from '@/shared/email/verifyEmail';
 import { requireServerUrl } from '@/shared/lib/server-url';
@@ -21,8 +21,8 @@ function pruneRateLimit(now: number) {
 
 export async function POST() {
   const payload = await getPayload();
-  const { user } = await payload.auth({ headers: await nextHeaders() });
-  if (!user || user.collection !== 'users') {
+  const user = await getRouteUser();
+  if (!user) {
     return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 });
   }
   if (user.emailVerified) {

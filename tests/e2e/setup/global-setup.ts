@@ -39,5 +39,9 @@ async function ensureUser(user: { email: string; password: string; name: string 
 
 export default async function globalSetup(_config: FullConfig): Promise<void> {
   await waitForServer();
-  await Promise.all([ensureUser(TEST_USERS.a), ensureUser(TEST_USERS.b)]);
+  await Promise.all([
+    ensureUser(TEST_USERS.a),
+    ensureUser(TEST_USERS.b),
+    ensureUser(TEST_USERS.c),
+  ]);
 }

@@ -12,4 +12,11 @@ export const TEST_USERS = {
     password: 'e2e-secret-bbbb',
     name: 'E2E Tester B',
   },
+  // Gereserveerd voor change-password tests: andere specs raken deze user
+  // niet aan, zodat een falende test geen ander wachtwoord achterlaat.
+  c: {
+    email: 'e2e-user-c@test.local',
+    password: 'e2e-secret-cccc',
+    name: 'E2E Tester C',
+  },
 } as const;
