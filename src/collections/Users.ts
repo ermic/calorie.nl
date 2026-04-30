@@ -1,5 +1,6 @@
 import type { CollectionBeforeValidateHook, CollectionConfig } from 'payload';
 import { adminOrSelfUser, isAdmin } from '@/shared/payload/hooks';
+import { resetPasswordEmail } from '@/shared/email/resetPassword';
 
 const PRIVILEGED_FIELDS = ['plan', 'aiPhotoCredits', 'creditsResetAt', 'role'] as const;
 
@@ -42,7 +43,16 @@ const lockPrivilegedFieldsOnSelfWrite: CollectionBeforeValidateHook = ({
 
 export const Users: CollectionConfig = {
   slug: 'users',
-  auth: true,
+  auth: {
+    forgotPassword: {
+      generateEmailHTML: (args) => {
+        const { token, user } = (args ?? {}) as { token?: string; user?: { name?: string | null; email?: string } };
+        const link = `${process.env.NEXT_PUBLIC_SERVER_URL}/reset-password?token=${token ?? ''}`;
+        return resetPasswordEmail({ name: user?.name, link });
+      },
+      generateEmailSubject: () => 'Wachtwoord herstellen — Calorietje',
+    },
+  },
   admin: {
     useAsTitle: 'email',
     defaultColumns: ['email', 'name', 'role', 'plan', 'aiPhotoCredits'],

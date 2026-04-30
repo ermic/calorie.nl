@@ -40,6 +40,12 @@ export function LoginForm() {
         error={errors.password?.message}
       />
 
+      <div className="-mt-2 text-right">
+        <Link href="/forgot-password" className="text-sm text-primary-600 hover:underline">
+          Wachtwoord vergeten?
+        </Link>
+      </div>
+
       {login.error && (
         <p className="text-sm text-danger" role="alert">
           {login.error.message}

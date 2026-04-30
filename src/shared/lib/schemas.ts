@@ -24,3 +24,21 @@ export const RegisterSchema = z
   });
 
 export type RegisterInput = z.infer<typeof RegisterSchema>;
+
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email('Ongeldig e-mailadres'),
+});
+
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+
+export const ResetPasswordSchema = z
+  .object({
+    password: z.string().min(8, 'Minimaal 8 tekens'),
+    passwordConfirm: z.string(),
+  })
+  .refine((d) => d.password === d.passwordConfirm, {
+    message: 'Wachtwoorden komen niet overeen',
+    path: ['passwordConfirm'],
+  });
+
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
