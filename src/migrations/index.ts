@@ -7,6 +7,7 @@ import * as migration_20260430_122100_add_email_verifications_collection from '.
 import * as migration_20260430_131542_add_email_verification_kind from './20260430_131542_add_email_verification_kind';
 import * as migration_20260430_134708_add_providers_and_login_challenges from './20260430_134708_add_providers_and_login_challenges';
 import * as migration_20260430_143618_add_users_sessions_expires_at_idx from './20260430_143618_add_users_sessions_expires_at_idx';
+import * as migration_20260430_144148_normalize_user_emails_lowercase from './20260430_144148_normalize_user_emails_lowercase';
 
 export const migrations = [
   {
@@ -52,6 +53,11 @@ export const migrations = [
   {
     up: migration_20260430_143618_add_users_sessions_expires_at_idx.up,
     down: migration_20260430_143618_add_users_sessions_expires_at_idx.down,
-    name: '20260430_143618_add_users_sessions_expires_at_idx'
+    name: '20260430_143618_add_users_sessions_expires_at_idx',
+  },
+  {
+    up: migration_20260430_144148_normalize_user_emails_lowercase.up,
+    down: migration_20260430_144148_normalize_user_emails_lowercase.down,
+    name: '20260430_144148_normalize_user_emails_lowercase'
   },
 ];

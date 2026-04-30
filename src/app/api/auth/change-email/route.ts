@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { PayloadRequest } from 'payload';
 import { getPayload } from '@/shared/lib/payload';
 import { getRouteUser } from '@/shared/lib/route-auth';
 import { ChangeEmailSchema } from '@/shared/lib/schemas';
@@ -9,30 +10,37 @@ import { changeEmailNoticeEmail } from '@/shared/email/changeEmailNotice';
 
 export const runtime = 'nodejs';
 
-// Rate-limit per user (10 mislukte verifies / 15 min). Beschermt tegen
-// brute-force op currentPassword via een gestolen sessie. Succesvolle
-// wijziging wist de teller.
-const failedVerifies = new Map<string, number[]>();
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
-const ATTEMPT_LIMIT = 10;
 
-function isLockedOut(userId: string, now: number): boolean {
-  const stamps = failedVerifies.get(userId)?.filter((t) => now - t < ATTEMPT_WINDOW_MS) ?? [];
+// Twee aparte rate-limits per user:
+// - failedVerifies: max 10 fout-current-password-pogingen / 15 min
+//   → beschermt tegen brute-force met geldige sessie.
+// - successfulStarts: max 3 succesvolle change-aanvragen / 15 min →
+//   beschermt tegen mail-bombing (elke aanvraag stuurt 2 mails: notify
+//   naar oud + confirm naar nieuw, dus 6 mails / 15 min max).
+const failedVerifies = new Map<string, number[]>();
+const FAILED_LIMIT = 10;
+
+const successfulStarts = new Map<string, number[]>();
+const STARTS_LIMIT = 3;
+
+function isLockedOut(map: Map<string, number[]>, limit: number, userId: string, now: number): boolean {
+  const stamps = map.get(userId)?.filter((t) => now - t < ATTEMPT_WINDOW_MS) ?? [];
   if (stamps.length === 0) {
-    failedVerifies.delete(userId);
+    map.delete(userId);
     return false;
   }
-  failedVerifies.set(userId, stamps);
-  return stamps.length >= ATTEMPT_LIMIT;
+  map.set(userId, stamps);
+  return stamps.length >= limit;
 }
 
-function recordFailedVerify(userId: string, now: number): void {
-  const stamps = failedVerifies.get(userId)?.filter((t) => now - t < ATTEMPT_WINDOW_MS) ?? [];
+function recordEvent(map: Map<string, number[]>, userId: string, now: number): void {
+  const stamps = map.get(userId)?.filter((t) => now - t < ATTEMPT_WINDOW_MS) ?? [];
   stamps.push(now);
-  failedVerifies.set(userId, stamps);
-  if (failedVerifies.size > 1000) {
-    for (const [k, v] of failedVerifies) {
-      if (v.every((t) => now - t > ATTEMPT_WINDOW_MS)) failedVerifies.delete(k);
+  map.set(userId, stamps);
+  if (map.size > 1000) {
+    for (const [k, v] of map) {
+      if (v.every((t) => now - t > ATTEMPT_WINDOW_MS)) map.delete(k);
     }
   }
 }
@@ -50,9 +58,16 @@ export async function POST(request: Request) {
 
   const userId = String(user.id);
   const now = Date.now();
-  if (isLockedOut(userId, now)) {
+
+  if (isLockedOut(failedVerifies, FAILED_LIMIT, userId, now)) {
     return NextResponse.json(
       { error: 'Te veel mislukte pogingen. Probeer over 15 minuten opnieuw.' },
+      { status: 429 },
+    );
+  }
+  if (isLockedOut(successfulStarts, STARTS_LIMIT, userId, now)) {
+    return NextResponse.json(
+      { error: 'Te veel wijzigingsaanvragen. Probeer over 15 minuten opnieuw.' },
       { status: 429 },
     );
   }
@@ -107,7 +122,7 @@ export async function POST(request: Request) {
       data: { email: user.email, password: currentPassword },
     });
   } catch {
-    recordFailedVerify(userId, now);
+    recordEvent(failedVerifies, userId, now);
     return NextResponse.json(
       { error: 'Huidig wachtwoord is onjuist.' },
       { status: 400 },
@@ -115,46 +130,73 @@ export async function POST(request: Request) {
   }
   failedVerifies.delete(userId);
 
-  // Eén lopende wijziging per user — maak schoon vóór we de nieuwe
-  // tokens persistenten.
-  await payload.delete({
-    collection: 'emailVerifications',
-    where: {
-      and: [
-        { userId: { equals: userId } },
-        { kind: { in: ['change-confirm', 'change-revoke'] } },
-      ],
-    },
-    overrideAccess: true,
-  });
-
   const confirmToken = generateToken();
   const revokeToken = generateToken();
   const expiresAt = new Date(now + 24 * 60 * 60 * 1000).toISOString();
   const baseUrl = requireServerUrl();
 
-  await payload.create({
-    collection: 'emailVerifications',
-    overrideAccess: true,
-    data: {
-      tokenHash: hashToken(confirmToken),
-      userId,
-      kind: 'change-confirm',
-      newEmail: normalizedNew,
-      expiresAt,
-    },
-  });
-  await payload.create({
-    collection: 'emailVerifications',
-    overrideAccess: true,
-    data: {
-      tokenHash: hashToken(revokeToken),
-      userId,
-      kind: 'change-revoke',
-      newEmail: normalizedNew,
-      expiresAt,
-    },
-  });
+  // Atomic delete + 2× create binnen één tx. Twee parallelle change-
+  // email-aanvragen zien elkaars tokens nog niet (READ COMMITTED), maar
+  // de tx-wrap voorkomt dat we halverwege orphan tokens achterlaten als
+  // één van de creates faalt. Volledige race-bescherming tegen parallel
+  // requests vereist een unique partial index op (user_id, kind) — zie
+  // FOLLOW_UPS.
+  const transactionID = await payload.db.beginTransaction();
+  if (transactionID === undefined || transactionID === null) {
+    return NextResponse.json(
+      { error: 'Database ondersteunt geen transacties; aanvraag geannuleerd.' },
+      { status: 500 },
+    );
+  }
+  const txReq = { transactionID } as unknown as PayloadRequest;
+
+  try {
+    await payload.delete({
+      collection: 'emailVerifications',
+      where: {
+        and: [
+          { userId: { equals: userId } },
+          { kind: { in: ['change-confirm', 'change-revoke'] } },
+        ],
+      },
+      overrideAccess: true,
+      req: txReq,
+    });
+
+    await payload.create({
+      collection: 'emailVerifications',
+      overrideAccess: true,
+      req: txReq,
+      data: {
+        tokenHash: hashToken(confirmToken),
+        userId,
+        kind: 'change-confirm',
+        newEmail: normalizedNew,
+        expiresAt,
+      },
+    });
+    await payload.create({
+      collection: 'emailVerifications',
+      overrideAccess: true,
+      req: txReq,
+      data: {
+        tokenHash: hashToken(revokeToken),
+        userId,
+        kind: 'change-revoke',
+        newEmail: normalizedNew,
+        expiresAt,
+      },
+    });
+
+    await payload.db.commitTransaction(transactionID);
+  } catch (err) {
+    await payload.db.rollbackTransaction(transactionID).catch(() => {});
+    payload.logger.error({ err, userId }, 'change-email tx failed');
+    return NextResponse.json(
+      { error: 'Aanvraag mislukt. Probeer opnieuw.' },
+      { status: 500 },
+    );
+  }
 
   // Cap mail-send op 10s en cleanup tokens bij failure: we willen geen
   // orphan tokens in DB en geen 30s-hangende request. Bij failure: 502
@@ -202,6 +244,9 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   }
+
+  // Pas hier de succesvolle-aanvraag-teller bijwerken: na complete flow.
+  recordEvent(successfulStarts, userId, now);
 
   return NextResponse.json({ ok: true });
 }
