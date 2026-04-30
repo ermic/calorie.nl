@@ -9,6 +9,7 @@ import * as migration_20260430_134708_add_providers_and_login_challenges from '.
 import * as migration_20260430_143618_add_users_sessions_expires_at_idx from './20260430_143618_add_users_sessions_expires_at_idx';
 import * as migration_20260430_144148_normalize_user_emails_lowercase from './20260430_144148_normalize_user_emails_lowercase';
 import * as migration_20260430_145537_add_passkey_credentials from './20260430_145537_add_passkey_credentials';
+import * as migration_20260430_153137_cascade_user_delete from './20260430_153137_cascade_user_delete';
 
 export const migrations = [
   {
@@ -64,6 +65,11 @@ export const migrations = [
   {
     up: migration_20260430_145537_add_passkey_credentials.up,
     down: migration_20260430_145537_add_passkey_credentials.down,
-    name: '20260430_145537_add_passkey_credentials'
+    name: '20260430_145537_add_passkey_credentials',
+  },
+  {
+    up: migration_20260430_153137_cascade_user_delete.up,
+    down: migration_20260430_153137_cascade_user_delete.down,
+    name: '20260430_153137_cascade_user_delete'
   },
 ];

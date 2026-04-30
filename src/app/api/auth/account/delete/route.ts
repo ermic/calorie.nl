@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { sql } from '@payloadcms/db-postgres';
 import { getPayload } from '@/shared/lib/payload';
 import { getRouteUser } from '@/shared/lib/route-auth';
 import { DeleteAccountSchema } from '@/shared/lib/schemas';
@@ -116,11 +117,31 @@ export async function POST(request: Request) {
     overrideAccess: true,
   });
 
+  // Cascade van eigen data: meal_items (via meals), meals, day_logs.
+  // Direct SQL in een Postgres-transactie zodat een failure halverwege
+  // de hele actie rolled back wordt en we niet met half-verwijderde
+  // accounts blijven zitten.
+  //
+  // We omzeilen payload.delete omdat:
+  //   1. Het probeert eerst inverse-relaties op NULL te zetten, wat
+  //      botst met NOT NULL op meals.user/day_logs.user.
+  //   2. Payload's auto-schema-push hardcodet `onDelete: 'set null'` op
+  //      relationship-FKs en kan onze ON DELETE CASCADE-migratie in dev
+  //      overschrijven. App-laag-cascade leunt niet op DB-FK-state.
+  //
+  // foods.created_by_id heeft ON DELETE SET NULL — foods kunnen door
+  // anderen gebruikt zijn, dus laten we ze staan met null-author.
+  const userIdNum = typeof user.id === 'number' ? user.id : Number(user.id);
   try {
-    await payload.delete({
-      collection: 'users',
-      id: user.id,
-      overrideAccess: true,
+    await payload.db.drizzle.transaction(async (tx) => {
+      await tx.execute(sql`
+        DELETE FROM meal_items WHERE meal_id IN (
+          SELECT id FROM meals WHERE user_id = ${userIdNum}
+        )
+      `);
+      await tx.execute(sql`DELETE FROM meals WHERE user_id = ${userIdNum}`);
+      await tx.execute(sql`DELETE FROM day_logs WHERE user_id = ${userIdNum}`);
+      await tx.execute(sql`DELETE FROM users WHERE id = ${userIdNum}`);
     });
   } catch (err) {
     payload.logger.error({ err, userId: user.id }, 'account delete failed');
