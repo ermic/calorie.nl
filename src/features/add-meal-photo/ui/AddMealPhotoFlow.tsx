@@ -35,8 +35,8 @@ export function AddMealPhotoFlow() {
     return () => URL.revokeObjectURL(url);
   }, [photoFile]);
 
-  const pushLog = useCallback((entry: Omit<PipelineLogEntry, 'ts'>) => {
-    setLogs((prev) => [...prev, { ...entry, ts: Date.now() }]);
+  const pushLog = useCallback((entry: Omit<PipelineLogEntry, 'timeStamp'>) => {
+    setLogs((prev) => [...prev, { ...entry, timeStamp: Date.now() }]);
   }, []);
 
   const analyze = useAnalyzePhoto(pushLog);
@@ -81,7 +81,10 @@ export function AddMealPhotoFlow() {
         aiConfidence: confidence ?? undefined,
         userRating: userRating ?? undefined,
         aiSnapshot: aiSnapshot ?? undefined,
-        pipelineDebug: logs.length > 0 ? logs : undefined,
+        pipelineDebug:
+          logs.length > 0
+            ? logs.map(({ timeStamp, ...rest }) => ({ ts: timeStamp, ...rest }))
+            : undefined,
         items: items.map((i) => ({
           name: i.name,
           quantity: i.quantity,

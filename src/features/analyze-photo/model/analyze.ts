@@ -1,18 +1,20 @@
 import { z } from 'zod';
-import { GEMINI_VISION_MODEL, getVisionModel, type GeminiModelName } from '@/shared/api/gemini';
+import { getVisionModel, type ActiveVisionModel, type GeminiModelName } from '@/shared/api/gemini';
 import type { PhotoAnalysis } from '@/entities/meal';
-import { fileToInlineData } from '../lib/image-bytes';
+import { fileToInlineData, type InlineImage } from '../lib/image-bytes';
 import { matchIngredients, type MatchedItem } from './match';
+
+const GEMINI_PARSE_ERROR_MESSAGE = 'AI-analyse gaf geen geldig resultaat. Probeer een andere foto.';
 
 // ─── Logger ────────────────────────────────────────────────────────────
 export type PipelineLogEntry = {
-  ts: number;
+  timeStamp: number;
   level: 'info' | 'warn' | 'error';
   message: string;
   data?: unknown;
 };
 
-export type PipelineLogger = (entry: Omit<PipelineLogEntry, 'ts'>) => void;
+export type PipelineLogger = (entry: Omit<PipelineLogEntry, 'timeStamp'>) => void;
 
 const NOOP_LOGGER: PipelineLogger = () => {};
 
@@ -133,30 +135,32 @@ const EstimateSchema = z.object({
     .default([]),
 });
 
-type CalcItemOut = {
-  nevo_code: number;
-  name_nl: string;
-  grams: number;
-  kcal: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
-};
+const CalcResponseSchema = z.object({
+  totals: z.object({
+    kcal: z.number(),
+    kj: z.number(),
+    protein_g: z.number(),
+    fat_g: z.number(),
+    saturated_fat_g: z.number(),
+    carbs_g: z.number(),
+    sugar_g: z.number(),
+    fiber_g: z.number(),
+    salt_g: z.number(),
+  }),
+  items: z.array(
+    z.object({
+      nevo_code: z.number(),
+      name_nl: z.string(),
+      grams: z.number(),
+      kcal: z.number(),
+      protein_g: z.number(),
+      carbs_g: z.number(),
+      fat_g: z.number(),
+    }),
+  ),
+});
 
-type CalcResponse = {
-  totals: {
-    kcal: number;
-    kj: number;
-    protein_g: number;
-    fat_g: number;
-    saturated_fat_g: number;
-    carbs_g: number;
-    sugar_g: number;
-    fiber_g: number;
-    salt_g: number;
-  };
-  items: CalcItemOut[];
-};
+type CalcResponse = z.infer<typeof CalcResponseSchema>;
 
 // Gemini geeft meestal pure JSON wanneer responseMimeType=json, maar valt
 // soms terug op een markdown-code-fence. Strip die preventief, en trim.
@@ -172,69 +176,70 @@ function extractJson(text: string): string {
 }
 
 // ─── Gemini-calls ─────────────────────────────────────────────────────
-async function recognize(file: File, apiKey: string, logger: PipelineLogger): Promise<RecognizeResult> {
-  logger({ level: 'info', message: 'Stap 1: foto naar Gemini voor herkenning…' });
-  const inline = await fileToInlineData(file);
-  const result = await getVisionModel(apiKey).generateContent([RECOGNIZE_PROMPT, inline]);
+async function callGemini<T extends z.ZodTypeAny>(
+  active: ActiveVisionModel,
+  prompt: string,
+  inline: InlineImage,
+  schema: T,
+  label: string,
+  logger: PipelineLogger,
+): Promise<z.infer<T>> {
+  const result = await active.client.generateContent([prompt, inline]);
   const text = result.response.text();
   let parsed: unknown;
   try {
     parsed = JSON.parse(extractJson(text));
   } catch (err) {
-    logger({ level: 'error', message: 'Gemini gaf geen geldige JSON (recognize)', data: { text, err: String(err) } });
-    throw new Error('AI-analyse gaf geen geldig resultaat. Probeer een andere foto.');
+    logger({
+      level: 'error',
+      message: `Gemini gaf geen geldige JSON (${label})`,
+      data: { text, err: String(err) },
+    });
+    throw new Error(GEMINI_PARSE_ERROR_MESSAGE);
   }
-  const safe = RecognizeSchema.safeParse(parsed);
+  const safe = schema.safeParse(parsed);
   if (!safe.success) {
     logger({
       level: 'error',
-      message: 'Gemini-response klopt niet met schema (recognize)',
+      message: `Gemini-response klopt niet met schema (${label})`,
       data: { parsed, issues: safe.error.issues },
     });
-    throw new Error('AI-analyse gaf geen geldig resultaat. Probeer een andere foto.');
+    throw new Error(GEMINI_PARSE_ERROR_MESSAGE);
   }
-  logger({
-    level: 'info',
-    message: `Stap 1 klaar: ${safe.data.items.length} items, confidence=${(safe.data.confidence * 100).toFixed(0)}%`,
-    data: { items: safe.data.items.map((i) => ({ searchName: i.searchName, state: i.state })) },
-  });
   return safe.data;
 }
 
+async function recognize(
+  active: ActiveVisionModel,
+  inline: InlineImage,
+  logger: PipelineLogger,
+): Promise<RecognizeResult> {
+  logger({ level: 'info', message: 'Stap 1: foto naar Gemini voor herkenning…' });
+  const data = await callGemini(active, RECOGNIZE_PROMPT, inline, RecognizeSchema, 'recognize', logger);
+  logger({
+    level: 'info',
+    message: `Stap 1 klaar: ${data.items.length} items, confidence=${(data.confidence * 100).toFixed(0)}%`,
+    data: { items: data.items.map((i) => ({ searchName: i.searchName, state: i.state })) },
+  });
+  return data;
+}
+
 async function estimate(
-  file: File,
-  apiKey: string,
+  active: ActiveVisionModel,
+  inline: InlineImage,
   matched: MatchedItem[],
   unmatched: MatchedItem[],
   logger: PipelineLogger,
 ): Promise<z.infer<typeof EstimateSchema>> {
   logger({ level: 'info', message: 'Stap 3: gewicht per item door Gemini…' });
-  const inline = await fileToInlineData(file);
   const prompt = buildEstimatePrompt(matched, unmatched);
-  const result = await getVisionModel(apiKey).generateContent([prompt, inline]);
-  const text = result.response.text();
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(extractJson(text));
-  } catch (err) {
-    logger({ level: 'error', message: 'Gemini gaf geen geldige JSON (estimate)', data: { text, err: String(err) } });
-    throw new Error('AI-analyse gaf geen geldig resultaat. Probeer een andere foto.');
-  }
-  const safe = EstimateSchema.safeParse(parsed);
-  if (!safe.success) {
-    logger({
-      level: 'error',
-      message: 'Gemini-response klopt niet met schema (estimate)',
-      data: { parsed, issues: safe.error.issues },
-    });
-    throw new Error('AI-analyse gaf geen geldig resultaat. Probeer een andere foto.');
-  }
+  const data = await callGemini(active, prompt, inline, EstimateSchema, 'estimate', logger);
   logger({
     level: 'info',
-    message: `Stap 3 klaar: ${safe.data.matched.length} gewichten + ${safe.data.unmatched.length} Gemini-macro's`,
-    data: { matched: safe.data.matched, unmatched: safe.data.unmatched },
+    message: `Stap 3 klaar: ${data.matched.length} gewichten + ${data.unmatched.length} Gemini-macro's`,
+    data: { matched: data.matched, unmatched: data.unmatched },
   });
-  return safe.data;
+  return data;
 }
 
 export type AnalyzeResult = { analysis: PhotoAnalysis; model: GeminiModelName };
@@ -244,10 +249,45 @@ export type AnalyzeResult = { analysis: PhotoAnalysis; model: GeminiModelName };
 // 2. /api/nevo/match → top-1 NEVO-match per ingredient.
 // 3. Gemini schat gewicht per gematcht item, gegeven canonical NEVO-namen.
 // 4. /api/nevo/calculate → definitieve macro's per item + totalen.
+async function fetchCalculate(
+  calcInput: { nevoCode: number; grams: number }[],
+  logger: PipelineLogger,
+): Promise<CalcResponse> {
+  const calcRes = await fetch('/api/nevo/calculate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: calcInput }),
+  });
+  if (!calcRes.ok) {
+    const body = await calcRes.json().catch(() => null);
+    logger({ level: 'error', message: `Calculate faalde: HTTP ${calcRes.status}`, data: body });
+    if (calcRes.status === 503) throw new Error('NEVO is even niet bereikbaar. Probeer later opnieuw.');
+    throw new Error('Berekening mislukt. Probeer opnieuw.');
+  }
+  const raw: unknown = await calcRes.json();
+  const safe = CalcResponseSchema.safeParse(raw);
+  if (!safe.success) {
+    logger({
+      level: 'error',
+      message: 'Calculate-response klopt niet met schema',
+      data: { raw, issues: safe.error.issues },
+    });
+    throw new Error('Berekening mislukt. Probeer opnieuw.');
+  }
+  return safe.data;
+}
+
 export async function analyzePhoto(file: File, apiKey: string, logger: PipelineLogger = NOOP_LOGGER): Promise<AnalyzeResult> {
   logger({ level: 'info', message: `Pipeline gestart (${file.name}, ${(file.size / 1024).toFixed(0)} KB)` });
 
-  const recognized = await recognize(file, apiKey, logger);
+  // Eén keer bytes lezen + base64; Gemini-client één keer instantiëren.
+  // Beide stappen hergebruiken hetzelfde inline-image en dezelfde client,
+  // zodat de 'model' in het resultaat ook gegarandeerd matcht met wat er
+  // werkelijk is aangeroepen (incl. NEXT_PUBLIC_GEMINI_VISION_MODEL).
+  const active = getVisionModel(apiKey);
+  const inline = await fileToInlineData(file);
+
+  const recognized = await recognize(active, inline, logger);
 
   logger({ level: 'info', message: 'Stap 2: NEVO matchen via /api/nevo/match…' });
   const matched = await matchIngredients(
@@ -263,7 +303,7 @@ export async function analyzePhoto(file: File, apiKey: string, logger: PipelineL
       unmatched: unmatched.map((m) => m.inputName),
     },
   });
-  const estimated = await estimate(file, apiKey, matchedWithCode, unmatched, logger);
+  const estimated = await estimate(active, inline, matchedWithCode, unmatched, logger);
 
   // /calculate accepteert alleen nevoCodes die ook in stap 2 zijn
   // gematcht; filter Gemini's output zodat een halucinatie geen 422
@@ -274,25 +314,10 @@ export async function analyzePhoto(file: File, apiKey: string, logger: PipelineL
   let nevoItems: PhotoAnalysis['items'] = [];
   if (calcInput.length) {
     logger({ level: 'info', message: 'Stap 4: macro\'s berekenen via /api/nevo/calculate…' });
-    const calcRes = await fetch('/api/nevo/calculate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        items: calcInput.map((i) => ({ nevoCode: i.nevoCode, grams: i.grams })),
-      }),
-    });
-    if (!calcRes.ok) {
-      let body: unknown = null;
-      try {
-        body = await calcRes.json();
-      } catch {
-        // empty
-      }
-      logger({ level: 'error', message: `Calculate faalde: HTTP ${calcRes.status}`, data: body });
-      if (calcRes.status === 503) throw new Error('NEVO is even niet bereikbaar. Probeer later opnieuw.');
-      throw new Error('Berekening mislukt. Probeer opnieuw.');
-    }
-    const calc = (await calcRes.json()) as CalcResponse;
+    const calc = await fetchCalculate(
+      calcInput.map((i) => ({ nevoCode: i.nevoCode, grams: i.grams })),
+      logger,
+    );
     logger({
       level: 'info',
       message: `Stap 4 klaar: ${calc.totals.kcal} kcal totaal (NEVO)`,
@@ -342,7 +367,7 @@ export async function analyzePhoto(file: File, apiKey: string, logger: PipelineL
   };
 
   logger({ level: 'info', message: 'Pipeline klaar — review-stap actief' });
-  return { analysis, model: GEMINI_VISION_MODEL };
+  return { analysis, model: active.name };
 }
 
 export { detectImageType, type GeminiImageMimeType } from '../lib/image-bytes';

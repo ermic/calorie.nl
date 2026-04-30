@@ -63,7 +63,7 @@ export function PipelineLogPane({ logs, onClear }: PipelineLogPaneProps) {
           {logs.map((entry, i) => (
             <div key={i} className="space-y-0.5 border-b border-line/40 py-1 last:border-b-0">
               <div className="flex items-baseline gap-2">
-                <span className="text-ink-muted shrink-0">{formatTime(entry.ts)}</span>
+                <span className="text-ink-muted shrink-0">{formatTime(entry.timeStamp)}</span>
                 <span
                   className={cn(
                     'shrink-0 rounded px-1.5 py-px text-[10px] font-semibold uppercase',
