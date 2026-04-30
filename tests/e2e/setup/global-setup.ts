@@ -43,5 +43,6 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     ensureUser(TEST_USERS.a),
     ensureUser(TEST_USERS.b),
     ensureUser(TEST_USERS.c),
+    ensureUser(TEST_USERS.d),
   ]);
 }

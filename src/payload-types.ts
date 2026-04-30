@@ -268,6 +268,7 @@ export interface EmailVerification {
   id: number;
   tokenHash: string;
   userId: string;
+  kind: 'verify' | 'change-confirm' | 'change-revoke';
   newEmail?: string | null;
   expiresAt: string;
   updatedAt: string;
@@ -479,6 +480,7 @@ export interface MealItemsSelect<T extends boolean = true> {
 export interface EmailVerificationsSelect<T extends boolean = true> {
   tokenHash?: T;
   userId?: T;
+  kind?: T;
   newEmail?: T;
   expiresAt?: T;
   updatedAt?: T;

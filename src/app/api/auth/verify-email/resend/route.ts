@@ -42,14 +42,15 @@ export async function POST() {
     );
   }
 
-  // Oude eerste-verify rijen voor deze user opruimen (newEmail-tokens
-  // blijven staan — die horen bij een lopende e-mailwijziging).
+  // Oude eerste-verify rijen voor deze user opruimen. Change-confirm/
+  // change-revoke tokens blijven staan — die horen bij een lopende
+  // e-mailwijziging.
   await payload.delete({
     collection: 'emailVerifications',
     where: {
       and: [
         { userId: { equals: userId } },
-        { newEmail: { exists: false } },
+        { kind: { equals: 'verify' } },
       ],
     },
     overrideAccess: true,
@@ -62,7 +63,7 @@ export async function POST() {
   await payload.create({
     collection: 'emailVerifications',
     overrideAccess: true,
-    data: { tokenHash, userId, expiresAt },
+    data: { tokenHash, userId, kind: 'verify', expiresAt },
   });
 
   // sendEmail kan trage SMTP raken; cap op 10s en vang failures af zodat

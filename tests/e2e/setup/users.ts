@@ -19,4 +19,10 @@ export const TEST_USERS = {
     password: 'e2e-secret-cccc',
     name: 'E2E Tester C',
   },
+  // Gereserveerd voor change-email tests.
+  d: {
+    email: 'e2e-user-d@test.local',
+    password: 'e2e-secret-dddd',
+    name: 'E2E Tester D',
+  },
 } as const;

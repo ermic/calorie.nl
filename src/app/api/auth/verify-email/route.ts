@@ -27,18 +27,18 @@ export async function GET(req: NextRequest) {
 
   const result = await payload.find({
     collection: 'emailVerifications',
-    where: { tokenHash: { equals: tokenHash } },
+    where: {
+      and: [
+        { tokenHash: { equals: tokenHash } },
+        { kind: { equals: 'verify' } },
+      ],
+    },
     limit: 1,
     overrideAccess: true,
   });
   const record = result.docs[0];
 
   if (!record) {
-    return NextResponse.redirect(`${base}/login?error=verify_invalid`, 303);
-  }
-  // E-mailwijziging-tokens (newEmail gevuld) lopen niet via deze route
-  // — die krijgen straks een eigen confirm-email-change handler.
-  if (record.newEmail) {
     return NextResponse.redirect(`${base}/login?error=verify_invalid`, 303);
   }
 

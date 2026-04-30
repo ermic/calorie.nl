@@ -1,6 +1,6 @@
 import { AppHeader } from '@/widgets/app-shell';
 import { Card } from '@/shared/ui';
-import { ChangePasswordForm, LogoutButton } from '@/features/auth';
+import { ChangeEmailForm, ChangePasswordForm, LogoutButton } from '@/features/auth';
 import { ApiKeyCard, ProfileForm } from '@/features/update-profile';
 import { GoalForm } from '@/features/set-daily-goal';
 import { requireUser } from '@/shared/lib/auth-guard';
@@ -30,6 +30,12 @@ export async function ProfilePage() {
         {user.hasPassword && (
           <Card padded>
             <ChangePasswordForm />
+          </Card>
+        )}
+
+        {user.hasPassword && (
+          <Card padded>
+            <ChangeEmailForm />
           </Card>
         )}
 

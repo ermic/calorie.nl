@@ -9,11 +9,17 @@ import { verifyEmail } from '@/shared/email/verifyEmail';
 import { generateToken, hashToken } from '@/shared/lib/tokens';
 import { requireServerUrl } from '@/shared/lib/server-url';
 
-const PRIVILEGED_FIELDS = ['plan', 'aiPhotoCredits', 'creditsResetAt', 'role'] as const;
+// Velden die een user niet zelf via PATCH /api/users/:id mag wijzigen.
+// 'email' staat hier zodat de change-email-flow (met dubbele
+// bevestiging) niet bypassed kan worden via een rauwe PATCH.
+const PRIVILEGED_FIELDS = ['plan', 'aiPhotoCredits', 'creditsResetAt', 'role', 'email'] as const;
 
 // Public registration (no req.user) forceert veilige defaults; zelf-updates
 // laten de privileged velden ongewijzigd t.o.v. de bestaande doc-waardes.
 // Een andere user bewerken (bv. admin via /admin) blijft toegestaan.
+// Server-side mutaties met overrideAccess: true hebben geen req.user en
+// vallen daarmee buiten de reset (zo kan confirm-email-change wel email
+// updaten).
 const lockPrivilegedFieldsOnSelfWrite: CollectionBeforeValidateHook = ({
   data,
   operation,
@@ -69,7 +75,7 @@ const sendVerifyEmailOnCreate: CollectionAfterChangeHook = async ({
     await req.payload.create({
       collection: 'emailVerifications',
       overrideAccess: true,
-      data: { tokenHash, userId: String(doc.id), expiresAt },
+      data: { tokenHash, userId: String(doc.id), kind: 'verify', expiresAt },
     });
 
     const link = `${requireServerUrl()}/api/auth/verify-email?token=${token}`;

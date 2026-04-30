@@ -55,3 +55,10 @@ export const ChangePasswordSchema = z
   });
 
 export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
+
+export const ChangeEmailSchema = z.object({
+  newEmail: z.string().email('Ongeldig e-mailadres'),
+  currentPassword: z.string().min(1, 'Verplicht'),
+});
+
+export type ChangeEmailInput = z.infer<typeof ChangeEmailSchema>;
