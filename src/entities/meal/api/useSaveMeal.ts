@@ -2,13 +2,31 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/shared/lib/api';
+import type { PhotoAnalysis } from '../model/photo-analysis';
 import type { MealType } from '../model/types';
+
+// Vrije log-shape — 1:1 met features/analyze-photo PipelineLogEntry, maar
+// hier los gedeclareerd om een feature-import vanuit entities te
+// vermijden (FSD-laagschending).
+export type SaveMealPipelineEntry = {
+  ts: number;
+  level: 'info' | 'warn' | 'error';
+  message: string;
+  data?: unknown;
+};
 
 export type SaveMealInput = {
   mealType: MealType;
   eatenAt?: string;
   aiAnalyzed: boolean;
   aiConfidence?: number;
+  // 1 (slecht) t/m 5 (top); afwezig wanneer de gebruiker geen smiley koos.
+  userRating?: number;
+  // Volledige originele AI-output, ongeschonden door user-edits.
+  aiSnapshot?: PhotoAnalysis;
+  // Pipeline-trace (NEVO-matches, fallbacks, weights). Alleen bewaard
+  // voor toekomstige model-tuning.
+  pipelineDebug?: SaveMealPipelineEntry[];
   items: Array<{
     name: string;
     quantity: number;

@@ -1,7 +1,15 @@
 'use client';
 
 import { Plus, RefreshCw, Save } from 'lucide-react';
-import { MealItemEditor, MEAL_TYPE_LABELS, MEAL_TYPE_ORDER, sumMealItems, type MealType } from '@/entities/meal';
+import {
+  MealItemEditor,
+  MealRatingPicker,
+  MEAL_TYPE_LABELS,
+  MEAL_TYPE_ORDER,
+  sumMealItems,
+  type MealRating,
+  type MealType,
+} from '@/entities/meal';
 import { Button, Card, Tabs, TabsList, TabsTrigger } from '@/shared/ui';
 import { formatKcal, formatMacro } from '@/shared/lib/format';
 import { useAppDispatch, useAppSelector } from '@/shared/store';
@@ -11,6 +19,7 @@ import {
   itemRemoved,
   itemUpdated,
   mealTypeSet,
+  ratingSet,
 } from '../model/slice';
 
 export type ReviewStepProps = {
@@ -22,7 +31,7 @@ export type ReviewStepProps = {
 
 export function ReviewStep({ onSave, saving, error, photoUrl }: ReviewStepProps) {
   const dispatch = useAppDispatch();
-  const { items, mealType, confidence, notes } = useAppSelector((s) => s.addMealPhoto);
+  const { items, mealType, confidence, notes, userRating } = useAppSelector((s) => s.addMealPhoto);
   const totals = sumMealItems(items);
   const lowConfidence = confidence !== null && confidence < 0.5;
 
@@ -88,6 +97,19 @@ export function ReviewStep({ onSave, saving, error, photoUrl }: ReviewStepProps)
           <div>K {formatMacro(totals.carbs)}</div>
           <div>V {formatMacro(totals.fat)}</div>
         </div>
+      </Card>
+
+      <Card padded>
+        <div className="mb-2 text-sm font-medium text-ink">
+          Hoe goed schatte de AI deze maaltijd?
+        </div>
+        <MealRatingPicker
+          value={(userRating as MealRating | null) ?? null}
+          onChange={(r) => dispatch(ratingSet(r))}
+        />
+        <p className="mt-2 text-xs text-ink-muted">
+          Optioneel — je rating helpt om de schatting in de toekomst te verbeteren.
+        </p>
       </Card>
 
       {error && (

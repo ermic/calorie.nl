@@ -15,5 +15,6 @@ export { MealCard, type MealCardProps } from './ui/MealCard';
 export { MealDonut, type MealDonutProps } from './ui/MealDonut';
 export { MealItemEditor, type MealItemEditorProps } from './ui/MealItemEditor';
 export { MealMacroRow, type MealMacroRowProps, type MealMacros } from './ui/MealMacroRow';
+export { MealRatingPicker, type MealRating, type MealRatingPickerProps } from './ui/MealRatingPicker';
 export { MealTypeBadge, type MealTypeBadgeProps } from './ui/MealTypeBadge';
 export { useSaveMeal, type SaveMealInput, type SaveMealResponse } from './api/useSaveMeal';

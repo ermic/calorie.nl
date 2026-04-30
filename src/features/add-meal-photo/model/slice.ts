@@ -9,6 +9,13 @@ export type AddMealPhotoState = {
   mealType: MealType;
   confidence: number | null;
   notes: string | null;
+  // Onveranderlijke kopie van de oorspronkelijke AI-analyse — los van
+  // 'items' zodat user-edits, rescales en undo's de baseline niet kunnen
+  // overschrijven. Wordt meegestuurd bij save als trainingssignaal.
+  aiSnapshot: PhotoAnalysis | null;
+  // 1 (slecht/rood) t/m 5 (top/groen). null tot de gebruiker een smiley
+  // aantikt; mag null blijven (rating is optioneel).
+  userRating: number | null;
 };
 
 // Statische fallback; mealType wordt gerefreshed bij elke wizardReset
@@ -19,6 +26,8 @@ const initialState: AddMealPhotoState = {
   mealType: 'LUNCH',
   confidence: null,
   notes: null,
+  aiSnapshot: null,
+  userRating: null,
 };
 
 const slice = createSlice({
@@ -45,7 +54,12 @@ const slice = createSlice({
       });
       state.confidence = action.payload.confidence;
       state.notes = action.payload.notes ?? null;
+      state.aiSnapshot = action.payload;
+      state.userRating = null;
       state.step = 'review';
+    },
+    ratingSet(state, action: PayloadAction<number | null>) {
+      state.userRating = action.payload;
     },
     itemUpdated(state, action: PayloadAction<Partial<EditableMealItem> & Pick<EditableMealItem, 'clientId'>>) {
       const idx = state.items.findIndex((i) => i.clientId === action.payload.clientId);
@@ -84,6 +98,7 @@ export const {
   itemRemoved,
   itemAdded,
   mealTypeSet,
+  ratingSet,
   wizardReset,
   backToCapture,
 } = slice.actions;

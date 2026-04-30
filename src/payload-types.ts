@@ -211,6 +211,28 @@ export interface Meal {
   photoUrl?: string | null;
   aiAnalyzed?: boolean | null;
   aiConfidence?: number | null;
+  /**
+   * 1 (slecht) t/m 5 (top), gegeven door de gebruiker na opslag.
+   */
+  userRating?: number | null;
+  aiSnapshot?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  pipelineDebug?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -402,6 +424,9 @@ export interface MealsSelect<T extends boolean = true> {
   photoUrl?: T;
   aiAnalyzed?: T;
   aiConfidence?: T;
+  userRating?: T;
+  aiSnapshot?: T;
+  pipelineDebug?: T;
   updatedAt?: T;
   createdAt?: T;
 }

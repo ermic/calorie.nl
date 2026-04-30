@@ -22,6 +22,22 @@ const ItemSchema = z.object({
 const EATEN_AT_MAX_PAST_MS = 30 * 24 * 60 * 60 * 1000;
 const EATEN_AT_MAX_FUTURE_MS = 24 * 60 * 60 * 1000;
 
+// Pipeline-debug + aiSnapshot zijn vrije JSON. We accepteren `unknown`
+// (z.any) omdat het puur archief-data is voor latere model-tuning — een
+// strakke shape afdwingen heeft hier geen waarde en zou updates aan de
+// pipeline aan een endpoint-deploy koppelen. Wel een hard payload-cap
+// zodat een bug in de logger geen multi-MB-rij in de DB schiet.
+const PIPELINE_LOG_MAX_ENTRIES = 500;
+const AI_SNAPSHOT_MAX_BYTES = 64 * 1024;
+const PIPELINE_DEBUG_MAX_BYTES = 256 * 1024;
+
+const PipelineEntrySchema = z.object({
+  ts: z.number(),
+  level: z.enum(['info', 'warn', 'error']),
+  message: z.string().max(2000),
+  data: z.unknown().optional(),
+});
+
 const SaveSchema = z.object({
   mealType: z.enum(['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']),
   eatenAt: z
@@ -35,8 +51,19 @@ const SaveSchema = z.object({
     .optional(),
   aiAnalyzed: z.boolean().default(false),
   aiConfidence: z.number().min(0).max(1).optional(),
+  userRating: z.number().int().min(1).max(5).optional(),
+  aiSnapshot: z.unknown().optional(),
+  pipelineDebug: z.array(PipelineEntrySchema).max(PIPELINE_LOG_MAX_ENTRIES).optional(),
   items: z.array(ItemSchema).min(1).max(50),
 });
+
+function jsonByteSize(value: unknown): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(value), 'utf8');
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+}
 
 function startOfDay(d = new Date()) {
   const out = new Date(d);
@@ -131,6 +158,18 @@ export async function POST(req: NextRequest) {
   }
   const data = parsed.data;
 
+  // Hard cap op archief-payloads — voorkomt dat een bug in de client-
+  // logger megabytes aan junk de DB instuurt. Cap = drop, niet 400:
+  // de meal moet sowieso opgeslagen worden, het is metadata.
+  const aiSnapshot =
+    data.aiSnapshot !== undefined && jsonByteSize(data.aiSnapshot) <= AI_SNAPSHOT_MAX_BYTES
+      ? data.aiSnapshot
+      : undefined;
+  const pipelineDebug =
+    data.pipelineDebug !== undefined && jsonByteSize(data.pipelineDebug) <= PIPELINE_DEBUG_MAX_BYTES
+      ? data.pipelineDebug
+      : undefined;
+
   const eatenAt = data.eatenAt ? new Date(data.eatenAt) : new Date();
   const dayIso = startOfDay(eatenAt).toISOString();
 
@@ -204,6 +243,12 @@ export async function POST(req: NextRequest) {
         eatenAt: eatenAt.toISOString(),
         aiAnalyzed: data.aiAnalyzed,
         aiConfidence: data.aiConfidence,
+        userRating: data.userRating,
+        // Payload's JSON-veld accepteert primitives/array/object; we hebben
+        // hierboven via z.unknown() gevalideerd + size-cap. Cast omdat de
+        // gegenereerde Payload-type strikter is dan zod's unknown.
+        aiSnapshot: aiSnapshot as Record<string, unknown> | unknown[] | undefined,
+        pipelineDebug: pipelineDebug as unknown[] | undefined,
       },
       overrideAccess: false,
       req: txReq,
