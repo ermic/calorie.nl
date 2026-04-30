@@ -1,3 +1,5 @@
+import { escapeHtml } from '@/shared/lib/html-escape';
+
 export type ResetPasswordEmailProps = {
   name?: string | null;
   link: string;
@@ -22,8 +24,4 @@ export function resetPasswordEmail({ name, link }: ResetPasswordEmailProps): str
   </div>
 </body>
 </html>`;
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 }

@@ -72,6 +72,7 @@ export interface Config {
     dayLogs: DayLog;
     meals: Meal;
     mealItems: MealItem;
+    emailVerifications: EmailVerification;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -84,6 +85,7 @@ export interface Config {
     dayLogs: DayLogsSelect<false> | DayLogsSelect<true>;
     meals: MealsSelect<false> | MealsSelect<true>;
     mealItems: MealItemsSelect<false> | MealItemsSelect<true>;
+    emailVerifications: EmailVerificationsSelect<false> | EmailVerificationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -260,6 +262,19 @@ export interface MealItem {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "emailVerifications".
+ */
+export interface EmailVerification {
+  id: number;
+  tokenHash: string;
+  userId: string;
+  newEmail?: string | null;
+  expiresAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -301,6 +316,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'mealItems';
         value: number | MealItem;
+      } | null)
+    | ({
+        relationTo: 'emailVerifications';
+        value: number | EmailVerification;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -450,6 +469,18 @@ export interface MealItemsSelect<T extends boolean = true> {
   fat?: T;
   fiber?: T;
   sugar?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "emailVerifications_select".
+ */
+export interface EmailVerificationsSelect<T extends boolean = true> {
+  tokenHash?: T;
+  userId?: T;
+  newEmail?: T;
+  expiresAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -4,6 +4,7 @@ export { useRegister } from './api/useRegister';
 export { useLogout } from './api/useLogout';
 export { useForgotPassword } from './api/useForgotPassword';
 export { useResetPassword } from './api/useResetPassword';
+export { useResendVerification } from './api/useResendVerification';
 export { LoginForm } from './ui/LoginForm';
 export { RegisterForm } from './ui/RegisterForm';
 export { LogoutButton } from './ui/LogoutButton';

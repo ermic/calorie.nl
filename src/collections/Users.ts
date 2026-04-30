@@ -1,6 +1,13 @@
-import type { CollectionBeforeValidateHook, CollectionConfig } from 'payload';
+import type {
+  CollectionAfterChangeHook,
+  CollectionBeforeValidateHook,
+  CollectionConfig,
+} from 'payload';
 import { adminOrSelfUser, isAdmin } from '@/shared/payload/hooks';
 import { resetPasswordEmail } from '@/shared/email/resetPassword';
+import { verifyEmail } from '@/shared/email/verifyEmail';
+import { generateToken, hashToken } from '@/shared/lib/tokens';
+import { requireServerUrl } from '@/shared/lib/server-url';
 
 const PRIVILEGED_FIELDS = ['plan', 'aiPhotoCredits', 'creditsResetAt', 'role'] as const;
 
@@ -41,13 +48,50 @@ const lockPrivilegedFieldsOnSelfWrite: CollectionBeforeValidateHook = ({
   return data;
 };
 
+// Stuurt bij user-create een verificatiemail. Slaat alleen de sha256-hash
+// van de token op; plain token zit in de mail-link. Skipt users die al
+// verified zijn (bv. later via OAuth met email_verified=true). Errors in
+// de mail-send mogen de create-transactie niet rollbacken — de user kan
+// daarna via de banner /resend gebruiken.
+const sendVerifyEmailOnCreate: CollectionAfterChangeHook = async ({
+  doc,
+  operation,
+  req,
+}) => {
+  if (operation !== 'create') return doc;
+  if (doc.emailVerified) return doc;
+
+  try {
+    const token = generateToken();
+    const tokenHash = hashToken(token);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    await req.payload.create({
+      collection: 'emailVerifications',
+      overrideAccess: true,
+      data: { tokenHash, userId: String(doc.id), expiresAt },
+    });
+
+    const link = `${requireServerUrl()}/api/auth/verify-email?token=${token}`;
+    await req.payload.sendEmail({
+      to: doc.email,
+      subject: 'Bevestig je e-mailadres — Calorietje',
+      html: verifyEmail({ name: doc.name ?? null, link }),
+    });
+  } catch (err) {
+    req.payload.logger.error({ err, userId: doc.id }, 'verify-email send failed');
+  }
+
+  return doc;
+};
+
 export const Users: CollectionConfig = {
   slug: 'users',
   auth: {
     forgotPassword: {
       generateEmailHTML: (args) => {
         const { token, user } = (args ?? {}) as { token?: string; user?: { name?: string | null; email?: string } };
-        const link = `${process.env.NEXT_PUBLIC_SERVER_URL}/reset-password?token=${token ?? ''}`;
+        const link = `${requireServerUrl()}/reset-password?token=${token ?? ''}`;
         return resetPasswordEmail({ name: user?.name, link });
       },
       generateEmailSubject: () => 'Wachtwoord herstellen — Calorietje',
@@ -66,6 +110,7 @@ export const Users: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [lockPrivilegedFieldsOnSelfWrite],
+    afterChange: [sendVerifyEmailOnCreate],
   },
   fields: [
     { name: 'name', type: 'text' },
