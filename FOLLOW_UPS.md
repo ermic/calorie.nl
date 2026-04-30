@@ -214,6 +214,96 @@ Prioriteiten:
 
 ---
 
+## Auth-roadmap (fase 1–5)
+
+### 21. Multi-instance rate-limits via Redis
+- **P1 · M** — vereist zodra de app op meer dan één worker / pod draait
+- **Waar**: alle in-memory `Map<string, number[]>`-tellers in
+  - [src/app/api/auth/change-password/route.ts](src/app/api/auth/change-password/route.ts) — `failedVerifies`
+  - [src/app/api/auth/change-email/route.ts](src/app/api/auth/change-email/route.ts) — `failedVerifies` + `successfulStarts`
+  - [src/app/api/auth/account/delete/route.ts](src/app/api/auth/account/delete/route.ts) — `failedVerifies`
+  - [src/app/api/auth/verify-email/resend/route.ts](src/app/api/auth/verify-email/resend/route.ts) — `recentSends`
+  - [src/app/api/auth/passkey/login/options/route.ts](src/app/api/auth/passkey/login/options/route.ts) — `recentHits`
+- **Probleem**: elke worker/pod heeft een eigen Map. Een aanvaller die N workers raakt krijgt N× de limiet.
+- **Aanpak**: abstracte `RateLimiter` interface (`hit(key) → ok|wait_seconds`); in-memory voor single-instance, Redis-backed voor multi-instance. Eén plek de implementatie kiezen via env.
+- **Acceptatie**: bestaande tests groen + integratie-test bewijst dat tellers gedeeld worden over twee servers (mock).
+
+### 22. Last-method-guard race tussen parallelle DELETEs
+- **P2 · S**
+- **Waar**: [src/app/api/auth/providers/[provider]/route.ts](src/app/api/auth/providers/\[provider\]/route.ts), [src/app/api/auth/passkey/credentials/[id]/route.ts](src/app/api/auth/passkey/credentials/\[id\]/route.ts)
+- **Probleem**: twee parallelle DELETEs (één voor Google, één voor passkey) bij user met `hasPassword=false` kunnen beide door de guard glippen → user heeft 1 methode over (i.p.v. 0, geen permanent-lock), maar welke wint is non-deterministic.
+- **Aanpak**: advisory lock per user-id (`pg_advisory_xact_lock`) binnen een transactie, of `SELECT ... FOR UPDATE` op de users-rij vooraf.
+- **Acceptatie**: race-test stuurt twee DELETEs gelijktijdig; precies één slaagt (200), de ander krijgt 409 met last-method-melding.
+
+### 23. Unique partial index op `(user_id, kind)` voor change-email
+- **P2 · S**
+- **Waar**: [src/collections/EmailVerifications.ts](src/collections/EmailVerifications.ts), [src/app/api/auth/change-email/route.ts](src/app/api/auth/change-email/route.ts)
+- **Probleem**: twee parallelle change-email-aanvragen kunnen beide 2 tokens (`change-confirm` + `change-revoke`) inserten — de tweede aanvraag's tokens worden weggegooid bij de eerste confirm-click, maar zijn tot die tijd "verloren in DB".
+- **Aanpak**: `CREATE UNIQUE INDEX ... ON email_verifications (user_id, kind) WHERE kind IN ('change-confirm', 'change-revoke')` + `INSERT ... ON CONFLICT (user_id, kind) DO UPDATE SET ...` in de change-email-route.
+- **Acceptatie**: parallelle POSTs leveren altijd precies 1 confirm + 1 revoke per user op.
+
+### 24. Token uit URL halen voor confirm/revoke-links
+- **P3 · M**
+- **Waar**: alle mail-templates ([verifyEmail.ts](src/shared/email/verifyEmail.ts), [changeEmailConfirm.ts](src/shared/email/changeEmailConfirm.ts), [changeEmailNotice.ts](src/shared/email/changeEmailNotice.ts), [resetPassword.ts](src/shared/email/resetPassword.ts))
+- **Probleem**: tokens lekken via Referer-header bij doorklikken en blijven in browser-history.
+- **Aanpak**: intermediate page met POST-form (token in body i.p.v. URL), of fragment-token (`#token=…`) die niet in Referer wordt meegestuurd.
+- **Acceptatie**: na klik op verify-link is de token niet zichtbaar in DevTools network → Referer-header op `/login`.
+
+### 25. GDPR-cleanup `foods.createdBy` bij user-delete
+- **P3 · S** (P0 als compliance-audit nodig is)
+- **Waar**: [src/app/api/auth/account/delete/route.ts](src/app/api/auth/account/delete/route.ts)
+- **Probleem**: na delete blijft `foods.createdBy = NULL` staan, maar de `name` van de food kan nog herleidbare info bevatten ("Henk's chili"). Strict-GDPR: persoonsgegeven over een verwijderde user.
+- **Aanpak**: in de delete-transactie ook `UPDATE foods SET name = '[Verwijderde gebruiker]', brand = NULL WHERE created_by_id = $userId` vóór de user-delete (de `SET NULL` op `created_by_id` blijft).
+- **Acceptatie**: na delete bevat geen enkele `food`-rij nog herleidbare info naar de verwijderde user.
+
+### 26. `afterDelete`-hook met expliciete cascade-collection-lijst
+- **P2 · M**
+- **Waar**: [src/app/api/auth/account/delete/route.ts](src/app/api/auth/account/delete/route.ts), [src/collections/Users.ts](src/collections/Users.ts)
+- **Probleem**: cascade-keten in de delete-route is fragile. Als ooit een nieuwe user-eigendom-collection wordt toegevoegd (foto-uploads, recepten, …) moet die handmatig in de keten. Geen mechanisme dat dit afdwingt.
+- **Aanpak**: `afterDelete`-hook op Users die een per-collection-lijst loopt; nieuwe collection toevoegen = één regel + bijbehorende test. Alternatief: lijst genereren uit collection-config (filter op relations naar `users`).
+- **Acceptatie**: cascade-smoketest dekt elke collection met user-relatie + faalt automatisch wanneer een nieuwe collection geen entry heeft.
+
+### 27. Hardcoded hook-defaults vervangen door gedeelde helper
+- **P2 · S**
+- **Waar**: [src/collections/Users.ts](src/collections/Users.ts) — `lockPrivilegedFieldsOnSelfWrite`, [src/shared/lib/account-linking.ts](src/shared/lib/account-linking.ts) — OAuth-create
+- **Probleem**: `lockPrivilegedFieldsOnSelfWrite` zet `plan/aiPhotoCredits/creditsResetAt/role` als impliciete defaults bij anonCreate; OAuth-create leunt erop. Refactor van de hook (extra check op `req.context`) breekt OAuth-create stilzwijgend. Bovendien dwingt dit een `as any`-cast af in account-linking omdat Payload's strict types deze velden expecten.
+- **Aanpak**: `defaultUserFields()` exporteren uit `Users.ts`; gebruiken in de hook én expliciet meegeven in OAuth-create. Smoketest-`as any`-casts kunnen weg.
+- **Acceptatie**: account-linking compileert zonder `as any`; OAuth-create genereert dezelfde defaults als anonCreate.
+
+### 28. `PASSKEY_LOGIN_COOKIE`-constant duplicatie
+- **P3 · S**
+- **Waar**: [src/app/api/auth/passkey/login/options/route.ts](src/app/api/auth/passkey/login/options/route.ts), [src/app/api/auth/passkey/login/verify/route.ts](src/app/api/auth/passkey/login/verify/route.ts)
+- **Aanpak**: verplaatsen naar [src/shared/lib/webauthn.ts](src/shared/lib/webauthn.ts), beide routes importeren.
+
+### 29. Happy-path Google OAuth e2e met `oauth2-mock-server`
+- **P2 · L**
+- **Waar**: [tests/e2e/auth/google-oauth.spec.ts](tests/e2e/auth/google-oauth.spec.ts) — dekt alleen error-paths.
+- **Probleem**: geen end-to-end coverage voor de full code-exchange + linking-flow. Een Google-API-breaking-change wordt pas in productie zichtbaar.
+- **Aanpak**: `oauth2-mock-server` op vast port + Playwright `webServer.env`-override voor `GOOGLE_CLIENT_ID`/`SECRET`/`REDIRECT_URI`. arctic's `Google` class accepteert custom URLs niet — vervang door directe `fetch` of een wrapper die de mock-URL gebruikt.
+- **Acceptatie**: Playwright doet UI-flow → mock-Google → callback → ingelogd op `/`. Idem voor `intent=link` en `account_exists_login_first`.
+
+### 30. Full register→login passkey e2e
+- **P2 · L**
+- **Waar**: [tests/e2e/auth/passkey.spec.ts](tests/e2e/auth/passkey.spec.ts) — dekt alleen API-routes.
+- **Aanpak**: Chrome DevTools Protocol via Playwright CDP-session: `WebAuthn.enable` + `WebAuthn.addVirtualAuthenticator`. UI-flow: registreer passkey op `/profile` → logout → login via PasskeyLoginButton → ingelogd op `/`. Patroon staat in [AUTH_SPECS.md §11.2](AUTH_SPECS.md).
+- **Acceptatie**: virtual authenticator overleeft register + login + delete-credential cycle.
+
+### 31. Mail-bombing-limit feature-test (change-email)
+- **P3 · M**
+- **Waar**: [src/app/api/auth/change-email/route.ts](src/app/api/auth/change-email/route.ts) (`STARTS_LIMIT = 3`)
+- **Probleem**: geen e2e die bewijst dat de 4e succesvolle aanvraag binnen 15 min een 429 geeft. Vereist 6 echte SMTP-mails of een SMTP-mock.
+- **Aanpak**: Mailpit als test-SMTP + dedicated test-user; rate-limit-state resetbaar via een test-only endpoint (gated op `NODE_ENV !== 'production'`).
+- **Acceptatie**: 4 successieve POSTs binnen 15 min → 1, 2, 3 = 200; 4 = 429.
+
+### 32. Confirm/revoke-tokens via mail-mock
+- **P2 · M** — vereist voor #29, #30 en aparte volledige e-mail-flow tests
+- **Waar**: [tests/e2e/auth/change-email.spec.ts](tests/e2e/auth/change-email.spec.ts), verify-email-flow
+- **Probleem**: plain tokens worden alleen in mails verstuurd, niet in API-responses; tests kunnen het confirm-pad niet doorlopen.
+- **Aanpak**: test-only mail-mock (Mailpit, REST-API) die verstuurde mails vasthoudt + uitleest in test-context. Of stub `payload.sendEmail` in test-modus.
+- **Acceptatie**: e2e doet register → leest verify-mail uit mock → klikt link → user is verified.
+
+---
+
 ## Volgorde-suggestie
 
 Als eerstvolgende release (~1 dag):
@@ -228,5 +318,15 @@ Release daarna:
 7. `not-found.tsx` (§8)
 8. iOS install-hint (§9)
 9. E2E-setup basis (§19)
+
+Auth-hardening voor multi-user uitrol (P0/P1):
+10. Multi-instance rate-limit via Redis (§21)
+11. Last-method-guard race (§22) — zodra OAuth+passkey breed gebruikt wordt
+12. Unique partial index op change-email tokens (§23)
+13. Hook-defaults helper (§27) — quick win, lost ook `as any`-casts op
+14. afterDelete-hook met cascade-lijst (§26) — vóór nieuwe user-eigendom-collections worden toegevoegd
+
+Test-infrastructuur (P2):
+15. Mail-mock (§32) → unlocks Google OAuth e2e (§29) + passkey e2e (§30) + change-email feature-test (§31)
 
 Rest zodra concreet nodig.
