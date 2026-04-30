@@ -5,6 +5,7 @@ import * as migration_20260430_002904_meal_rating from './20260430_002904_meal_r
 import * as migration_20260430_115018_add_email_verification_and_drift_catchup from './20260430_115018_add_email_verification_and_drift_catchup';
 import * as migration_20260430_122100_add_email_verifications_collection from './20260430_122100_add_email_verifications_collection';
 import * as migration_20260430_131542_add_email_verification_kind from './20260430_131542_add_email_verification_kind';
+import * as migration_20260430_134708_add_providers_and_login_challenges from './20260430_134708_add_providers_and_login_challenges';
 
 export const migrations = [
   {
@@ -40,6 +41,11 @@ export const migrations = [
   {
     up: migration_20260430_131542_add_email_verification_kind.up,
     down: migration_20260430_131542_add_email_verification_kind.down,
-    name: '20260430_131542_add_email_verification_kind'
+    name: '20260430_131542_add_email_verification_kind',
+  },
+  {
+    up: migration_20260430_134708_add_providers_and_login_challenges.up,
+    down: migration_20260430_134708_add_providers_and_login_challenges.down,
+    name: '20260430_134708_add_providers_and_login_challenges'
   },
 ];

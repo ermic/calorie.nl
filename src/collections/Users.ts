@@ -135,6 +135,30 @@ export const Users: CollectionConfig = {
       admin: { readOnly: true, position: 'sidebar' },
     },
     {
+      // Gekoppelde sociale accounts. Alleen schrijfbaar via server-side
+      // mutaties (overrideAccess: true), niet via PATCH /api/users/:id.
+      name: 'providers',
+      type: 'array',
+      access: { update: () => false },
+      admin: { readOnly: true },
+      fields: [
+        {
+          name: 'provider',
+          type: 'select',
+          required: true,
+          options: [
+            { label: 'Google', value: 'google' },
+            { label: 'Facebook', value: 'facebook' },
+            { label: 'Passkey (placeholder)', value: 'passkey' },
+          ],
+        },
+        { name: 'providerUserId', type: 'text', required: true, index: true },
+        { name: 'email', type: 'text' },
+        { name: 'emailVerified', type: 'checkbox', defaultValue: false },
+        { name: 'linkedAt', type: 'date', defaultValue: () => new Date() },
+      ],
+    },
+    {
       name: 'role',
       type: 'select',
       options: [

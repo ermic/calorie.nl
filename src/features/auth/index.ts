@@ -14,3 +14,4 @@ export { ForgotPasswordForm } from './ui/ForgotPasswordForm';
 export { ResetPasswordForm } from './ui/ResetPasswordForm';
 export { ChangePasswordForm } from './ui/ChangePasswordForm';
 export { ChangeEmailForm } from './ui/ChangeEmailForm';
+export { GoogleButton } from './ui/GoogleButton';

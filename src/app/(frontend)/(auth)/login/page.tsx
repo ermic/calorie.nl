@@ -31,6 +31,23 @@ function getFlag(p: LoginSearchParams): Flag | null {
       return { kind: 'error', text: 'Deze e-mailwijzigingslink is ongeldig of al gebruikt.' };
     case 'email_change_taken':
       return { kind: 'error', text: 'Het nieuwe e-mailadres is inmiddels in gebruik.' };
+    case 'oauth_state_mismatch':
+      return { kind: 'error', text: 'Inlog-sessie verlopen of ongeldig. Probeer opnieuw.' };
+    case 'oauth_provider_error':
+      return { kind: 'error', text: 'De provider kon je niet inloggen. Probeer opnieuw.' };
+    case 'oauth_not_configured':
+      return { kind: 'error', text: 'OAuth-login is op deze omgeving niet geconfigureerd.' };
+    case 'oauth_link_requires_login':
+      return { kind: 'error', text: 'Log eerst in om een Google-account te koppelen.' };
+    case 'oauth_already_linked':
+      return { kind: 'error', text: 'Deze Google-account is al aan een ander Calorietje-account gekoppeld.' };
+    case 'account_exists_login_first':
+      return {
+        kind: 'error',
+        text: 'Je hebt al een account met dit e-mailadres. Log eerst in en koppel daarna Google via je profiel.',
+      };
+    case 'email_required':
+      return { kind: 'error', text: 'De provider gaf geen e-mailadres door. Voeg toestemming toe of gebruik een andere methode.' };
     default:
       return null;
   }

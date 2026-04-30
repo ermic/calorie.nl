@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { Button, Input } from '@/shared/ui';
 import { LoginSchema, type LoginInput } from '@/shared/lib/schemas';
 import { useLogin } from '../api/useLogin';
+import { GoogleButton } from './GoogleButton';
 
 export function LoginForm() {
   const login = useLogin();
@@ -55,6 +56,14 @@ export function LoginForm() {
       <Button type="submit" fullWidth loading={login.isPending}>
         Inloggen
       </Button>
+
+      <div className="flex items-center gap-3 py-1 text-xs uppercase tracking-wider text-ink-muted">
+        <div className="h-px flex-1 bg-ink/10" />
+        of
+        <div className="h-px flex-1 bg-ink/10" />
+      </div>
+
+      <GoogleButton />
 
       <p className="text-sm text-ink-muted text-center">
         Nog geen account?{' '}

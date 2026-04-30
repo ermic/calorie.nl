@@ -73,6 +73,7 @@ export interface Config {
     meals: Meal;
     mealItems: MealItem;
     emailVerifications: EmailVerification;
+    loginChallenges: LoginChallenge;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -86,6 +87,7 @@ export interface Config {
     meals: MealsSelect<false> | MealsSelect<true>;
     mealItems: MealItemsSelect<false> | MealItemsSelect<true>;
     emailVerifications: EmailVerificationsSelect<false> | EmailVerificationsSelect<true>;
+    loginChallenges: LoginChallengesSelect<false> | LoginChallengesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -134,6 +136,16 @@ export interface User {
   name?: string | null;
   emailVerified?: boolean | null;
   hasPassword?: boolean | null;
+  providers?:
+    | {
+        provider: 'google' | 'facebook' | 'passkey';
+        providerUserId: string;
+        email?: string | null;
+        emailVerified?: boolean | null;
+        linkedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   role: 'user' | 'admin';
   plan: 'FREE' | 'PREMIUM' | 'PRO';
   aiPhotoCredits: number;
@@ -276,6 +288,23 @@ export interface EmailVerification {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "loginChallenges".
+ */
+export interface LoginChallenge {
+  id: number;
+  kind: 'oauth-state' | 'webauthn-register' | 'webauthn-login';
+  challenge: string;
+  pkceVerifier?: string | null;
+  provider?: string | null;
+  intent?: string | null;
+  userId?: string | null;
+  returnTo?: string | null;
+  expiresAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -321,6 +350,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'emailVerifications';
         value: number | EmailVerification;
+      } | null)
+    | ({
+        relationTo: 'loginChallenges';
+        value: number | LoginChallenge;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -372,6 +405,16 @@ export interface UsersSelect<T extends boolean = true> {
   name?: T;
   emailVerified?: T;
   hasPassword?: T;
+  providers?:
+    | T
+    | {
+        provider?: T;
+        providerUserId?: T;
+        email?: T;
+        emailVerified?: T;
+        linkedAt?: T;
+        id?: T;
+      };
   role?: T;
   plan?: T;
   aiPhotoCredits?: T;
@@ -482,6 +525,22 @@ export interface EmailVerificationsSelect<T extends boolean = true> {
   userId?: T;
   kind?: T;
   newEmail?: T;
+  expiresAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "loginChallenges_select".
+ */
+export interface LoginChallengesSelect<T extends boolean = true> {
+  kind?: T;
+  challenge?: T;
+  pkceVerifier?: T;
+  provider?: T;
+  intent?: T;
+  userId?: T;
+  returnTo?: T;
   expiresAt?: T;
   updatedAt?: T;
   createdAt?: T;

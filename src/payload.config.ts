@@ -12,6 +12,7 @@ import { DayLogs } from './collections/DayLogs';
 import { Meals } from './collections/Meals';
 import { MealItems } from './collections/MealItems';
 import { EmailVerifications } from './collections/EmailVerifications';
+import { LoginChallenges } from './collections/LoginChallenges';
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -23,7 +24,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Foods, DayLogs, Meals, MealItems, EmailVerifications],
+  collections: [Users, Foods, DayLogs, Meals, MealItems, EmailVerifications, LoginChallenges],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { Button, Input } from '@/shared/ui';
 import { RegisterSchema, type RegisterInput } from '@/shared/lib/schemas';
 import { useRegister } from '../api/useRegister';
+import { GoogleButton } from './GoogleButton';
 
 export function RegisterForm() {
   const registerMutation = useRegister();
@@ -67,6 +68,14 @@ export function RegisterForm() {
       <Button type="submit" fullWidth loading={registerMutation.isPending}>
         Account aanmaken
       </Button>
+
+      <div className="flex items-center gap-3 py-1 text-xs uppercase tracking-wider text-ink-muted">
+        <div className="h-px flex-1 bg-ink/10" />
+        of
+        <div className="h-px flex-1 bg-ink/10" />
+      </div>
+
+      <GoogleButton />
 
       <p className="text-sm text-ink-muted text-center">
         Al een account?{' '}
