@@ -2,7 +2,11 @@ import { getPayload } from '@/shared/lib/payload';
 import { sumMealItems, type Meal, type MealItem, type MealTotals } from '@/entities/meal';
 import type { User } from '@/payload-types';
 
-export type MealListItem = Pick<Meal, 'id' | 'mealType' | 'eatenAt' | 'photoUrl' | 'createdAt'> & {
+// photoUrl is BEWUST niet in dit type opgenomen — een meals-list van 30
+// rijen × ~10KB thumb zou de SSR-response anders met ~300KB opblazen.
+// De client haalt thumbs apart op via /api/meals/thumbs en mergt ze
+// per id voordat ze MealCard worden ingedoken.
+export type MealListItem = Pick<Meal, 'id' | 'mealType' | 'eatenAt' | 'createdAt'> & {
   totals: MealTotals;
 };
 
@@ -37,6 +41,9 @@ export async function fetchMealsPage({
     limit,
     page: Math.floor(offset / limit) + 1,
     depth: 0,
+    // Exclude photoUrl — wordt apart geladen via /api/meals/thumbs zodat
+    // de list-response niet door 30+ inline data-URLs opgeblazen wordt.
+    select: { photoUrl: false },
     overrideAccess: false,
     user,
   });
@@ -73,7 +80,6 @@ export async function fetchMealsPage({
       id: m.id,
       mealType: m.mealType,
       eatenAt: m.eatenAt,
-      photoUrl: m.photoUrl,
       createdAt: m.createdAt,
       totals: {
         calories: Math.round(totals.calories),

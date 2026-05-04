@@ -62,26 +62,27 @@ export async function generateMealThumb(file: File): Promise<string | null> {
     }
 
     const bitmap = await loadBitmap(blob);
-    const srcW = 'naturalWidth' in bitmap ? bitmap.naturalWidth : bitmap.width;
-    const srcH = 'naturalHeight' in bitmap ? bitmap.naturalHeight : bitmap.height;
-    if (!srcW || !srcH) {
+    let dataUrl: string;
+    try {
+      const srcW = 'naturalWidth' in bitmap ? bitmap.naturalWidth : bitmap.width;
+      const srcH = 'naturalHeight' in bitmap ? bitmap.naturalHeight : bitmap.height;
+      if (!srcW || !srcH) return null;
+
+      const { width, height } = fitInside(srcW, srcH, THUMB_MAX_DIM);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.drawImage(bitmap as CanvasImageSource, 0, 0, width, height);
+      dataUrl = canvas.toDataURL('image/webp', WEBP_QUALITY);
+    } finally {
+      // ImageBitmap pakt VRAM tot expliciete close (of GC); op iOS kan
+      // drawImage incidenteel throwen — finally zorgt dat we alsnog
+      // opruimen i.p.v. tot de volgende GC-cycle te wachten.
       if ('close' in bitmap) bitmap.close();
-      return null;
     }
 
-    const { width, height } = fitInside(srcW, srcH, THUMB_MAX_DIM);
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      if ('close' in bitmap) bitmap.close();
-      return null;
-    }
-    ctx.drawImage(bitmap as CanvasImageSource, 0, 0, width, height);
-    if ('close' in bitmap) bitmap.close();
-
-    const dataUrl = canvas.toDataURL('image/webp', WEBP_QUALITY);
     // Sommige browsers (bv. Firefox <93) kunnen toDataURL('image/webp')
     // negeren en een PNG-data-URL teruggeven. Filter die uit zodat de
     // server-side validatie niet verrast wordt.

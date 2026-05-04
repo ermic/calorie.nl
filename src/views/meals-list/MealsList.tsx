@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { format, isToday, isYesterday, startOfDay } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { Button, Card } from '@/shared/ui';
@@ -8,6 +8,8 @@ import { apiFetch, getApiErrorMessage } from '@/shared/lib/api';
 import { formatKcal } from '@/shared/lib/format';
 import { MealCard } from '@/entities/meal';
 import type { MealListItem, MealsPage } from './fetch-meals';
+
+type ThumbsResponse = { thumbs: Record<string, string | null> };
 
 const PAGE_SIZE = 30;
 
@@ -43,6 +45,35 @@ export function MealsList({ initialPage }: MealsListProps) {
   const [nextOffset, setNextOffset] = useState(initialPage.nextOffset);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [thumbs, setThumbs] = useState<Map<number, string | null>>(new Map());
+
+  // Laad thumbs voor zojuist toegevoegde meal-ids in één batch. Dedup
+  // op de thumbs-state zelf — een geannuleerde fetch (snelle load-more)
+  // laat de ids niet permanent in een 'fetched' ref achter, dus het
+  // volgende effect-run pakt ze alsnog op. Faalt de fetch (auth-loss,
+  // netwerk), dan blijft de placeholder staan: thumbs zijn cosmetisch
+  // en mogen geen error-toast triggeren.
+  useEffect(() => {
+    const idsToFetch = meals.map((m) => m.id).filter((id) => !thumbs.has(id));
+    if (idsToFetch.length === 0) return;
+
+    let cancelled = false;
+    apiFetch<ThumbsResponse>('/api/meals/thumbs', { params: { ids: idsToFetch.join(',') } })
+      .then((res) => {
+        if (cancelled) return;
+        setThumbs((prev) => {
+          const next = new Map(prev);
+          for (const [id, thumb] of Object.entries(res.thumbs)) {
+            next.set(Number(id), thumb);
+          }
+          return next;
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [meals, thumbs]);
 
   const loadMore = async () => {
     setLoading(true);
@@ -76,7 +107,12 @@ export function MealsList({ initialPage }: MealsListProps) {
           <ul role="list" className="space-y-2">
             {group.meals.map((meal) => (
               <li key={meal.id} className="list-none">
-                <MealCard meal={meal} href={`/meals/${meal.id}`} totals={meal.totals} className="min-w-0" />
+                <MealCard
+                  meal={{ ...meal, photoUrl: thumbs.get(meal.id) ?? null }}
+                  href={`/meals/${meal.id}`}
+                  totals={meal.totals}
+                  className="min-w-0"
+                />
               </li>
             ))}
           </ul>
