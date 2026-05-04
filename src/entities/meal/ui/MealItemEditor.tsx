@@ -74,7 +74,18 @@ export function MealItemEditor({ item, onChange, onRemove, className }: MealItem
       clientId: item.clientId,
       quantity,
     };
-    if (item.nevoPer100g) Object.assign(patch, scaleMacros(item.nevoPer100g, quantity));
+    if (item.nevoPer100g) {
+      Object.assign(patch, scaleMacros(item.nevoPer100g, quantity));
+    } else if (item.original && item.original.quantity > 0 && quantity > 0) {
+      // Fallback voor foto-analyse / food-search items zonder NEVO-pick:
+      // schaal vanaf de original-snapshot. Dat is een stabiel anker (nooit
+      // overschreven), dus keystroke-typen compoundt niet.
+      const ratio = quantity / item.original.quantity;
+      patch.calories = Math.round(item.original.calories * ratio);
+      patch.protein = Math.round(item.original.protein * ratio);
+      patch.carbs = Math.round(item.original.carbs * ratio);
+      patch.fat = Math.round(item.original.fat * ratio);
+    }
     onChange(patch);
   };
 
