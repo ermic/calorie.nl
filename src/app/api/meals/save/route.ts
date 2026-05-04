@@ -30,6 +30,12 @@ const EATEN_AT_MAX_FUTURE_MS = 24 * 60 * 60 * 1000;
 const PIPELINE_LOG_MAX_ENTRIES = 500;
 const AI_SNAPSHOT_MAX_BYTES = 64 * 1024;
 const PIPELINE_DEBUG_MAX_BYTES = 256 * 1024;
+// Client genereert een 256×256 WebP-thumb (zware compressie), typisch
+// 5-15KB als data-URL. Cap ruim op 60KB zodat raar-geformatteerde
+// foto's (transparantie, fotosynthese-prints) ook door de check
+// komen, maar een gecrafte multi-MB-string niet de DB instuurt.
+const PHOTO_THUMB_MAX_LENGTH = 60_000;
+const PHOTO_THUMB_PREFIX = 'data:image/webp;base64,';
 
 const PipelineEntrySchema = z.object({
   ts: z.number(),
@@ -54,6 +60,11 @@ const SaveSchema = z.object({
   userRating: z.number().int().min(1).max(5).optional(),
   aiSnapshot: z.unknown().optional(),
   pipelineDebug: z.array(PipelineEntrySchema).max(PIPELINE_LOG_MAX_ENTRIES).optional(),
+  photoThumb: z
+    .string()
+    .max(PHOTO_THUMB_MAX_LENGTH)
+    .refine((v) => v.startsWith(PHOTO_THUMB_PREFIX), 'photoThumb moet een WebP-data-URL zijn')
+    .optional(),
   items: z.array(ItemSchema).min(1).max(50),
 });
 
@@ -244,6 +255,7 @@ export async function POST(req: NextRequest) {
         aiAnalyzed: data.aiAnalyzed,
         aiConfidence: data.aiConfidence,
         userRating: data.userRating,
+        photoUrl: data.photoThumb,
         // Payload's JSON-veld accepteert primitives/array/object; we hebben
         // hierboven via z.unknown() gevalideerd + size-cap. Cast omdat de
         // gegenereerde Payload-type strikter is dan zod's unknown.

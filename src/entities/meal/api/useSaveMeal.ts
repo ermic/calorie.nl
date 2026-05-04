@@ -27,6 +27,9 @@ export type SaveMealInput = {
   // Pipeline-trace (NEVO-matches, fallbacks, weights). Alleen bewaard
   // voor toekomstige model-tuning.
   pipelineDebug?: SaveMealPipelineEntry[];
+  // 256×256 WebP-data-URL gegenereerd uit de gekozen foto. Wordt
+  // server-side opgeslagen in meal.photoUrl voor de thumb in de cards.
+  photoThumb?: string;
   items: Array<{
     name: string;
     quantity: number;
