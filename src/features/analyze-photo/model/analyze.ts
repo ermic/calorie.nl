@@ -337,14 +337,37 @@ export async function analyzePhoto(file: File, apiKey: string, logger: PipelineL
   );
   const matchedWithCode = matched.filter((m) => m.match);
   const unmatched = matched.filter((m) => !m.match);
+  // Per item de source meegeven zodat het log-paneel direct laat zien of
+  // een match via FTS, vector-fallback of niet kwam.
   logger({
     level: unmatched.length ? 'warn' : 'info',
     message: `Stap 2 klaar: ${matchedWithCode.length}/${matched.length} matched`,
     data: {
-      matched: matchedWithCode.map((m) => ({ input: m.inputName, nevoCode: m.match!.nevoCode, name: m.match!.nameNl })),
-      unmatched: unmatched.map((m) => m.inputName),
+      matched: matchedWithCode.map((m) => ({
+        input: m.inputName,
+        nevoCode: m.match!.nevoCode,
+        name: m.match!.nameNl,
+        source: m.source,
+      })),
+      unmatched: unmatched.map((m) => ({ input: m.inputName, source: m.source })),
     },
   });
+  const viaVector = matched.filter((m) => m.source === 'vector');
+  if (viaVector.length) {
+    // Aparte log-regel zodat in het PipelineLogPane direct opvalt wanneer
+    // de vector-fallback heeft bijgesprongen — incl. welke FTS-top is
+    // afgewezen om de keuze inzichtelijk te maken.
+    logger({
+      level: 'info',
+      message: `Vector-fallback redde ${viaVector.length} item(s)`,
+      data: viaVector.map((m) => ({
+        input: m.inputName,
+        nevoCode: m.match!.nevoCode,
+        name: m.match!.nameNl,
+        rejectedFtsTop: m.rejectedFtsTop,
+      })),
+    });
+  }
   const estimated = await estimate(active, inline, matchedWithCode, unmatched, logger);
 
   // /calculate accepteert alleen nevoCodes die ook in stap 2 zijn

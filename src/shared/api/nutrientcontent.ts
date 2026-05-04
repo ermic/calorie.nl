@@ -25,6 +25,8 @@ export type SearchHit = {
   food_group_en: string;
 };
 
+export type VectorHit = SearchHit & { similarity: number };
+
 export type NutrientValue = {
   code: string;
   name_nl: string;
@@ -115,6 +117,21 @@ export async function fetchFoodDetail(nevoCode: number, opts?: { signal?: AbortS
   return request<FoodDetail>(`/foods/${nevoCode}`, { signal: opts?.signal });
 }
 
+export async function searchFoodsByVector(
+  q: string,
+  opts?: { limit?: number; minSimilarity?: number; signal?: AbortSignal },
+): Promise<VectorHit[]> {
+  const params = new URLSearchParams();
+  params.set('q', q);
+  params.set('limit', String(opts?.limit ?? 5));
+  params.set('min_similarity', String(opts?.minSimilarity ?? 0));
+  const json = await request<{ query: string; results: VectorHit[] }>(
+    `/foods/vector?${params.toString()}`,
+    { signal: opts?.signal },
+  );
+  return json.results;
+}
+
 export async function calculate(
   items: CalcRequestItem[],
   opts?: { signal?: AbortSignal },
@@ -163,6 +180,7 @@ class TtlCache<T> {
 
 const SEARCH_CACHE = new TtlCache<SearchHit[]>(200, 10 * 60_000);
 const DETAIL_CACHE = new TtlCache<FoodDetail>(200, 10 * 60_000);
+const VECTOR_CACHE = new TtlCache<VectorHit[]>(200, 10 * 60_000);
 
 export async function searchFoodsCached(
   q: string,
@@ -175,6 +193,20 @@ export async function searchFoodsCached(
   if (cached) return cached;
   const fresh = await searchFoods(q, { lang, limit });
   SEARCH_CACHE.set(key, fresh);
+  return fresh;
+}
+
+export async function searchFoodsByVectorCached(
+  q: string,
+  opts?: { limit?: number; minSimilarity?: number },
+): Promise<VectorHit[]> {
+  const limit = opts?.limit ?? 5;
+  const minSim = opts?.minSimilarity ?? 0;
+  const key = `${limit}:${minSim}:${q.toLowerCase()}`;
+  const cached = VECTOR_CACHE.get(key);
+  if (cached) return cached;
+  const fresh = await searchFoodsByVector(q, { limit, minSimilarity: minSim });
+  VECTOR_CACHE.set(key, fresh);
   return fresh;
 }
 

@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers as nextHeaders } from 'next/headers';
 import { z } from 'zod';
 import { getPayload } from '@/shared/lib/payload';
-import { NutrientContentError, searchFoodsCached, type SearchHit } from '@/shared/api/nutrientcontent';
+import {
+  NutrientContentError,
+  searchFoodsByVectorCached,
+  searchFoodsCached,
+} from '@/shared/api/nutrientcontent';
+import {
+  lookupOne,
+  type MatchResult,
+  VECTOR_LIMIT,
+  VECTOR_THRESHOLD,
+} from '@/features/nevo-match';
 
 export const runtime = 'nodejs';
 
@@ -23,75 +33,15 @@ export type MatchEntry = {
   state?: string;
   match: { nevoCode: number; nameNl: string; foodGroupNl: string } | null;
   alternatives: { nevoCode: number; nameNl: string }[];
+  /** Welke tak heeft de match gemaakt — laat de UI in de pipeline-log
+   *  zien of vector-fallback heeft gevuurd. */
+  source: 'fts' | 'vector' | 'none';
+  /** Aanwezig wanneer FTS een topkandidaat had die door first-word check
+   *  is afgewezen — handig om in de UI te tonen waarom we vector pakten. */
+  rejectedFtsTop?: { nevoCode: number; nameEn: string; score: number };
 };
 
 export type MatchResponse = { items: MatchEntry[] };
-
-// We zoeken op de Engelse NEVO-namen omdat die consistenter zijn dan de
-// Nederlandse afkortingen ("Onions boiled" vs. "Ui gekookt", "Sweet
-// pepper red boiled" vs. "Paprika rode gekookt"). Het displayed item
-// blijft Nederlands (name_nl uit de SearchHit).
-
-const COOKED_PATTERNS = [
-  'boiled',
-  'cooked',
-  'fried',
-  'deep-fried',
-  'prepared',
-  'roasted',
-  'grilled',
-  'baked',
-  'stewed',
-  'steamed',
-  'poached',
-  'smoked',
-];
-
-function stripParens(s: string): string {
-  return s.replace(/\(([^)]+)\)/g, '$1').replace(/\s+/g, ' ').trim();
-}
-
-// Score per kandidaat. Hoger = beter passend.
-//   first-word match (start)        +10
-//   first-word match (substring)    +4
-//   exact state-woord in naam       +8
-//   cooked vs raw categorie match   +6 / mismatch -4
-function scoreHit(hit: SearchHit, cleanedName: string, state?: string): number {
-  const hitName = hit.name_en.toLowerCase();
-  const firstWord = cleanedName.split(/[\s,-]+/)[0] ?? '';
-  let score = 0;
-
-  if (firstWord) {
-    const hitFirst = hitName.split(/\s+/)[0];
-    // Plurals: "onions" startswith "onion" → match; "noodle" tegen "noodles" idem.
-    if (hitFirst === firstWord) score += 10;
-    else if (hitFirst.startsWith(firstWord) || firstWord.startsWith(hitFirst)) score += 8;
-    else if (hitName.includes(firstWord)) score += 4;
-  }
-
-  if (state) {
-    const stateLower = state.toLowerCase();
-    if (stateLower !== 'raw' && hitName.includes(stateLower)) {
-      score += 8;
-    }
-    const wantsCooked = stateLower !== 'raw';
-    const isRaw = /(^|\s)raw\b/.test(hitName);
-    const isCooked = COOKED_PATTERNS.some((p) => hitName.includes(p));
-    if (wantsCooked) {
-      if (isCooked) score += 6;
-      else if (isRaw) score -= 4;
-    } else {
-      if (isRaw) score += 6;
-      else if (isCooked) score -= 4;
-    }
-  }
-
-  return score;
-}
-
-function toMatch(hit: SearchHit) {
-  return { nevoCode: hit.nevo_code, nameNl: hit.name_nl, foodGroupNl: hit.food_group_nl };
-}
 
 export async function POST(req: NextRequest) {
   const payload = await getPayload();
@@ -105,54 +55,66 @@ export async function POST(req: NextRequest) {
 
   let serviceFailed = false;
 
-  const lookups = parsed.data.items.map(async ({ name, state }): Promise<MatchEntry> => {
-    const cleaned = stripParens(name).toLowerCase();
-    const firstWord = cleaned.split(/[\s,-]+/)[0] ?? '';
-
-    try {
-      // State NIET meegeven — die maakt de FTS-fallback chaotisch wanneer
-      // het state-woord niet in de target-naam zit.
-      const hits = await searchFoodsCached(stripParens(name), { lang: 'en' });
-      if (!hits.length) {
-        return { inputName: name, state, match: null, alternatives: [] };
+  // De cascade leeft in features/nevo-match; deze route doet alleen IO-glue
+  // + auth + logging. searchFts wraps alle FTS-fouten zodat ze als 'lege
+  // hits' afgehandeld worden — service-uitval rapporteren we via een
+  // aparte serviceFailed-flag voor de eind-503.
+  const services = {
+    async searchFts(q: string) {
+      try {
+        return await searchFoodsCached(q, { lang: 'en' });
+      } catch (err) {
+        if (err instanceof NutrientContentError && err.status >= 500) {
+          serviceFailed = true;
+        }
+        console.warn('[nevo/match] FTS search failed for', q, err);
+        return [];
       }
+    },
+    async searchVec(q: string) {
+      return searchFoodsByVectorCached(q, {
+        limit: VECTOR_LIMIT,
+        minSimilarity: VECTOR_THRESHOLD,
+      });
+    },
+  };
 
-      const ranked = hits
-        .map((h) => ({ hit: h, score: scoreHit(h, cleaned, state) }))
-        .sort((a, b) => b.score - a.score);
+  const results: MatchResult[] = await Promise.all(
+    parsed.data.items.map(({ name, state }) => lookupOne(name, state, services)),
+  );
 
-      // Reject als topkandidaat het hoofdwoord niet als hoofdwoord heeft —
-      // voorkomt dat 'noodle' valt op 'Chinese noodle ball deep-fried'.
-      const top = ranked[0];
-      const topFirst = top.hit.name_en.toLowerCase().split(/\s+/)[0];
-      const accepted =
-        firstWord !== '' &&
-        (topFirst === firstWord ||
-          topFirst.startsWith(firstWord) ||
-          firstWord.startsWith(topFirst));
+  // Logging voor Fase-4 evaluatie: telt per request hoeveel via FTS gingen,
+  // hoeveel via vector zijn 'gered', en hoeveel `null` blijven. Per item
+  // onder `[nevo/match]` met source-tag voor grep-ability in journalctl.
+  for (const r of results) {
+    console.info(
+      '[nevo/match]',
+      JSON.stringify({
+        input: r.inputName,
+        state: r.state,
+        source: r.source,
+        ...(r.match ? { nevoCode: r.match.nevoCode, name: r.match.nameNl } : {}),
+        ...(r.rejectedFtsTop
+          ? { rejectedFtsTop: r.rejectedFtsTop }
+          : {}),
+      }),
+    );
+  }
 
-      return {
-        inputName: name,
-        state,
-        match: accepted ? toMatch(top.hit) : null,
-        alternatives: ranked
-          .slice(accepted ? 1 : 0, 4)
-          .map(({ hit }) => ({ nevoCode: hit.nevo_code, nameNl: hit.name_nl })),
-      };
-    } catch (err) {
-      if (err instanceof NutrientContentError && err.status >= 500) {
-        serviceFailed = true;
-      }
-      console.warn('[nevo/match] search failed for', name, err);
-      return { inputName: name, state, match: null, alternatives: [] };
-    }
-  });
-
-  const items = await Promise.all(lookups);
-
-  if (serviceFailed && items.every((i) => !i.match)) {
+  if (serviceFailed && results.every((r) => !r.match)) {
     return NextResponse.json({ error: 'NEVO_UNAVAILABLE' }, { status: 503 });
   }
+
+  // source + rejectedFtsTop gaan mee de wire op zodat de browser-pipeline-
+  // log kan tonen of FTS of vector de match maakte (zie analyze.ts stap 2).
+  const items: MatchEntry[] = results.map((r) => ({
+    inputName: r.inputName,
+    state: r.state,
+    match: r.match,
+    alternatives: r.alternatives,
+    source: r.source,
+    ...(r.rejectedFtsTop ? { rejectedFtsTop: r.rejectedFtsTop } : {}),
+  }));
 
   return NextResponse.json<MatchResponse>({ items });
 }

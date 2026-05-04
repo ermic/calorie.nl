@@ -2,12 +2,18 @@
 // zodat dit bestand niet (per ongeluk) een import-pad aanlegt naar de
 // server-only route-handler.
 
+export type MatchSource = 'fts' | 'vector' | 'none';
+
 export type MatchedItem = {
   inputName: string;
   state?: string;
   visualHint?: string;
   match: { nevoCode: number; nameNl: string; foodGroupNl: string } | null;
   alternatives: { nevoCode: number; nameNl: string }[];
+  /** Welke tak deed de match — pipeline-log toont dit per ingrediënt. */
+  source: MatchSource;
+  /** Bij source !== 'fts' soms aanwezig: FTS-top die we afwezen. */
+  rejectedFtsTop?: { nevoCode: number; nameEn: string; score: number };
 };
 
 export type RecognizedItem = { name: string; state?: string; visualHint?: string };
