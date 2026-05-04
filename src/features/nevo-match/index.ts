@@ -1,4 +1,5 @@
 export {
+  FTS_LIMIT,
   lookupOne,
   pickMatch,
   scoreHit,

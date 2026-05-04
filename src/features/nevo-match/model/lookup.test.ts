@@ -62,6 +62,16 @@ describe('scoreHit', () => {
     const cooked = scoreHit(_hit({ name_en: 'Chicken cooked' }), 'chicken', 'grilled');
     expect(grilled).toBeGreaterThan(cooked);
   });
+
+  // Word-order swap: "red onion" vs "Onion red raw". Het hoofdwoord van de
+  // hit ('onion') komt voor als losse term in de input — vroeger gaf dat
+  // alleen +4 (substring), nu zou het hetzelfde moeten zijn als hit_first
+  // matched op input_first.
+  it('rewards modifier-noun word order swap as fully as direct match', () => {
+    const swapped = scoreHit(_hit({ name_en: 'Onion red raw' }), 'red onion', 'raw');
+    const direct = scoreHit(_hit({ name_en: 'Onion raw' }), 'onion', 'raw');
+    expect(swapped).toBeGreaterThanOrEqual(direct);
+  });
 });
 
 // ─── pickMatch — FTS-only paden ────────────────────────────────────────
@@ -124,6 +134,41 @@ describe('pickMatch — FTS hits rejected (word soup)', () => {
     expect(out.match).toBeNull();
     // Gebruiker kan deze alsnog zien als suggestie in de UI-review.
     expect(out.alternatives.map((a) => a.nevoCode)).toContain(1);
+  });
+});
+
+// Regressie van een echte productie-case: "red onion" + state="raw" → FTS
+// vond "Onion red raw" (NEVO 5459) maar werd afgewezen door de strict-
+// startsWith first-word check. Vector ving het op, maar dat is overhead;
+// de FTS-top was al goed.
+describe('pickMatch — modifier-noun word order swap', () => {
+  it('accepts FTS top when input and hit have swapped first/last words', () => {
+    const fts: SearchHit[] = [
+      _hit({ nevo_code: 5459, name_en: 'Onion red raw', name_nl: 'Ui rode rauw' }),
+    ];
+    const out = pickMatch('red onion', 'raw', fts, []);
+    expect(out.source).toBe('fts');
+    expect(out.match?.nevoCode).toBe(5459);
+  });
+
+  it('also accepts "white rice" → "Rice white boiled"', () => {
+    const fts: SearchHit[] = [
+      _hit({ nevo_code: 658, name_en: 'Rice white boiled', name_nl: 'Rijst witte gekookt' }),
+    ];
+    const out = pickMatch('white rice', 'boiled', fts, []);
+    expect(out.source).toBe('fts');
+    expect(out.match?.nevoCode).toBe(658);
+  });
+
+  it('still REJECTS noodle vs Chinese noodle ball (regression of original guard)', () => {
+    // De oude guard was bewust streng: voorkomen dat één-woord queries
+    // op willekeurige word-soup vallen. Die werking moet behouden.
+    const fts: SearchHit[] = [
+      _hit({ nevo_code: 1, name_en: 'Chinese noodle ball deep-fried', name_nl: 'Bal' }),
+    ];
+    const out = pickMatch('noodle', undefined, fts, []);
+    expect(out.source).toBe('none');
+    expect(out.match).toBeNull();
   });
 });
 

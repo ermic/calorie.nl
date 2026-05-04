@@ -29,11 +29,27 @@ const COOKED_PATTERNS = [
 // schatting de slot vult dan een verkeerde NEVO-rij in de telling.
 // Ondergrens komt uit empirische check op fase 1f (relevant ≥ ~0.7,
 // duidelijk irrelevant ≤ ~0.55).
-export const VECTOR_THRESHOLD = 0.65;
+//
+// Override via env-var `NEVO_VECTOR_THRESHOLD` zodat fase 4 tunable is
+// zonder redeploy. Server-only gebruik dus geen NEXT_PUBLIC_ prefix.
+function _resolveVectorThreshold(): number {
+  const raw = process.env.NEVO_VECTOR_THRESHOLD;
+  if (raw === undefined || raw === '') return 0.65;
+  const v = Number.parseFloat(raw);
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.65;
+}
+
+export const VECTOR_THRESHOLD = _resolveVectorThreshold();
 
 // Hoeveel vector-kandidaten we ophalen. >5 voegt zelden iets toe en
 // kost extra DB-werk per missing FTS-hit.
 export const VECTOR_LIMIT = 5;
+
+// Hoeveel FTS-hits we per ingredient ophalen. Default 30 (boven NEVO's
+// ~10-default) zodat scoreHit ook genuanceerde varianten als "Chicken
+// fillet prepared" kan vinden i.p.v. te kiezen uit de eerste 10
+// tsvector-rangs (waar specifieke 'Kipfilet' rijen vaak buiten vallen).
+export const FTS_LIMIT = 30;
 
 export type MatchEntry = {
   inputName: string;
@@ -56,21 +72,35 @@ export function stripParens(s: string): string {
 }
 
 // Score per kandidaat. Hoger = beter passend.
-//   first-word match (start)        +10
-//   first-word match (substring)    +4
-//   exact state-woord in naam       +8
-//   cooked vs raw categorie match   +6 / mismatch -4
+//   hit-eerste-woord = ENIG input-woord    +10
+//   hit-eerste-woord prefix-matched        +8
+//   input-eerste-woord substring in naam   +4
+//   exact state-woord in naam              +8
+//   cooked vs raw categorie match          +6 / mismatch -4
+//
+// "Bidirectioneel": we kijken zowel of de input-tokens het hit-eerste
+// woord bevatten ALS andersom. Dit lost word-order-swaps op zoals
+// "red onion" ↔ "Onion red raw" (input-token 'onion' = hit-first 'onion').
 export function scoreHit(hit: SearchHit, cleanedName: string, state?: string): number {
   const hitName = hit.name_en.toLowerCase();
-  const firstWord = cleanedName.split(/[\s,-]+/)[0] ?? '';
+  const inputWords = cleanedName.split(/[\s,-]+/).filter(Boolean);
+  const firstWord = inputWords[0] ?? '';
   let score = 0;
 
-  if (firstWord) {
+  if (inputWords.length) {
     const hitFirst = hitName.split(/\s+/)[0];
-    // Plurals: "onions" startswith "onion" → match; "noodle" tegen "noodles" idem.
-    if (hitFirst === firstWord) score += 10;
-    else if (hitFirst.startsWith(firstWord) || firstWord.startsWith(hitFirst)) score += 8;
-    else if (hitName.includes(firstWord)) score += 4;
+    if (inputWords.includes(hitFirst)) {
+      // Hit-eerste-woord komt exact als losse term in input voor.
+      score += 10;
+    } else if (
+      inputWords.some((w) => hitFirst.startsWith(w) || w.startsWith(hitFirst))
+    ) {
+      // Plurals/prefixen: "onions" startswith "onion"; "noodle" tegen "noodles".
+      score += 8;
+    } else if (firstWord && hitName.includes(firstWord)) {
+      // Zwakste match — input-eerste-woord komt érgens voor in hit.
+      score += 4;
+    }
   }
 
   if (state) {
@@ -101,16 +131,19 @@ function _toAlt(hit: SearchHit) {
   return { nevoCode: hit.nevo_code, nameNl: hit.name_nl };
 }
 
-// Hoofdwoord-vergelijking: het topkandidaat moet hetzelfde eerste woord
-// hebben (of een prefix daarvan) als de input. Voorkomt dat 'noodle'
-// valt op 'Chinese noodle ball deep-fried'.
-function _firstWordAcceptable(inputFirst: string, hitNameEn: string): boolean {
-  if (!inputFirst) return false;
+// Acceptance-gate: minstens één input-token moet matchen op het eerste
+// woord van de hit (gelijk, plural-prefix, of vice versa). Voorkomt dat
+// 'noodle' valt op 'Chinese noodle ball deep-fried' — daar is hit-first
+// 'chinese' en geen input-token komt daarmee overeen.
+//
+// Door álle input-tokens te checken (ipv alleen de eerste) accepteren
+// we ook word-order swaps: "red onion" ↔ hit-first 'onion'.
+function _firstWordsCompatible(cleanedInput: string, hitNameEn: string): boolean {
+  const inputWords = cleanedInput.split(/[\s,-]+/).filter(Boolean);
+  if (!inputWords.length) return false;
   const hitFirst = hitNameEn.toLowerCase().split(/\s+/)[0];
-  return (
-    hitFirst === inputFirst ||
-    hitFirst.startsWith(inputFirst) ||
-    inputFirst.startsWith(hitFirst)
+  return inputWords.some(
+    (w) => w === hitFirst || hitFirst.startsWith(w) || w.startsWith(hitFirst),
   );
 }
 
@@ -155,7 +188,6 @@ export function pickMatch(
   vectorHits: VectorHit[],
 ): MatchResult {
   const cleaned = stripParens(inputName).toLowerCase();
-  const firstWord = cleaned.split(/[\s,-]+/)[0] ?? '';
 
   // ── 1. FTS-pad ───────────────────────────────────────────────────────
   let ftsRanked: { hit: SearchHit; score: number }[] = [];
@@ -167,7 +199,7 @@ export function pickMatch(
       .sort((a, b) => b.score - a.score);
 
     const top = ftsRanked[0];
-    if (_firstWordAcceptable(firstWord, top.hit.name_en)) {
+    if (_firstWordsCompatible(cleaned, top.hit.name_en)) {
       // Happy path: FTS accepteert.
       return {
         inputName,

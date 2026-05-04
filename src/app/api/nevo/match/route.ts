@@ -8,6 +8,7 @@ import {
   searchFoodsCached,
 } from '@/shared/api/nutrientcontent';
 import {
+  FTS_LIMIT,
   lookupOne,
   type MatchResult,
   VECTOR_LIMIT,
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
   const services = {
     async searchFts(q: string) {
       try {
-        return await searchFoodsCached(q, { lang: 'en' });
+        return await searchFoodsCached(q, { lang: 'en', limit: FTS_LIMIT });
       } catch (err) {
         if (err instanceof NutrientContentError && err.status >= 500) {
           serviceFailed = true;
