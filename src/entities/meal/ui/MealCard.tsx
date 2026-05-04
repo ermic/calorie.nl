@@ -3,23 +3,9 @@ import { Card } from '@/shared/ui';
 import { cn } from '@/shared/lib/cn';
 import { formatKcal, formatTime } from '@/shared/lib/format';
 import type { Meal } from '../model/types';
+import { safeImageSrc } from '../lib/photo-url';
 import { MealMacroRow, type MealMacros } from './MealMacroRow';
 import { MealTypeBadge } from './MealTypeBadge';
-
-// Sta alleen veilige image-bronnen toe: app-relatieve paden, https://,
-// of door ons gegenereerde WebP-thumb-data-URLs (max ~80KB om DOM-
-// payloads beheersbaar te houden). Blokt javascript:, http:// (mixed-
-// content), andere data: subtypes en willekeurige schemes — photoUrl
-// kan via AI- of user-input gezet worden.
-const THUMB_DATA_PREFIX = 'data:image/webp;base64,';
-const THUMB_DATA_MAX_LENGTH = 80_000;
-function safeImageSrc(url: string | null | undefined): string | null {
-  if (!url) return null;
-  if (url.startsWith('/')) return url;
-  if (url.startsWith('https://')) return url;
-  if (url.startsWith(THUMB_DATA_PREFIX) && url.length <= THUMB_DATA_MAX_LENGTH) return url;
-  return null;
-}
 
 export type MealCardProps = {
   meal: Pick<Meal, 'id' | 'mealType' | 'eatenAt' | 'photoUrl'>;

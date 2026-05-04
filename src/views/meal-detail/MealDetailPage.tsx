@@ -9,6 +9,7 @@ import {
   MEAL_TYPE_LABELS,
   MealDonut,
   MealMacroRow,
+  MealPhotoThumb,
   MealTypeBadge,
   sumMealItems,
 } from '@/entities/meal';
@@ -59,6 +60,7 @@ export async function MealDetailPage({ id }: { id: number }) {
             <span>{formatDateLong(eatenAt)}</span>
             <span>·</span>
             <span>{formatTime(eatenAt)}</span>
+            {meal.photoUrl && <MealPhotoThumb src={meal.photoUrl} className="ml-1" />}
           </div>
           <MealDonut
             totals={{
