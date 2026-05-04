@@ -22,10 +22,18 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
   }, [input]);
 
   const { data, isFetching, isError, error } = useSearchFoods(debounced);
-  const hits = data?.results ?? [];
+  // Gate op de huidige input, niet op `data` zelf: react-query houdt via
+  // keepPreviousData oude hits vast nadat het zoekveld geleegd is.
+  const isActive = input.trim().length >= 2;
+  const hits = isActive ? data?.results ?? [] : [];
   const offAvailable = data?.offAvailable ?? true;
-  const showHint = debounced.length > 0 && debounced.length < 2;
+  const showHint = input.length > 0 && input.trim().length < 2;
   const sessionExpired = error instanceof ApiError && error.status === 401;
+
+  const handleSelect = (hit: FoodSearchHit) => {
+    setInput('');
+    onSelect(hit);
+  };
 
   return (
     <div className="space-y-3">
@@ -70,7 +78,7 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
         )
       )}
 
-      {debounced.length >= 2 && hits.length === 0 && !isFetching && !isError && (
+      {isActive && debounced.length >= 2 && hits.length === 0 && !isFetching && !isError && (
         <p className="text-sm text-ink-muted">
           Geen resultaten voor &ldquo;{debounced}&rdquo;.
           {!offAvailable && ' Open Food Facts is tijdelijk niet bereikbaar.'}
@@ -85,7 +93,7 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
               // result-set is stabiel binnen 1 query.
               key={`${hit.source}-${hit.id ?? hit.barcode ?? `${hit.name}-${index}`}`}
               hit={hit}
-              onSelect={onSelect}
+              onSelect={handleSelect}
             />
           ))}
         </ul>
