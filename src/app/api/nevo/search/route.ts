@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers as nextHeaders } from 'next/headers';
 import { getPayload } from '@/shared/lib/payload';
-import { NutrientContentError, searchFoodsCached } from '@/shared/api/nutrientcontent';
+import {
+  NutrientContentError,
+  searchFoodsByVectorCached,
+  searchFoodsCached,
+} from '@/shared/api/nutrientcontent';
+import { VECTOR_THRESHOLD } from '@/features/nevo-match';
 import type { NevoSearchResponse, NevoSuggestion } from '@/entities/meal/api/useNevoSearch';
 
 export const runtime = 'nodejs';
@@ -29,12 +34,42 @@ export async function GET(req: NextRequest) {
 
   try {
     const hits = await searchFoodsCached(q, { lang: 'nl', limit });
-    const results: NevoSuggestion[] = hits.map((h) => ({
-      nevoCode: h.nevo_code,
-      nameNl: h.name_nl,
-      foodGroupNl: h.food_group_nl,
-    }));
-    return NextResponse.json<NevoSearchResponse>({ results });
+    if (hits.length > 0) {
+      const results: NevoSuggestion[] = hits.map((h) => ({
+        nevoCode: h.nevo_code,
+        nameNl: h.name_nl,
+        foodGroupNl: h.food_group_nl,
+      }));
+      return NextResponse.json<NevoSearchResponse>({ results });
+    }
+
+    // FTS = 0 hits → cascade naar vector. Zelfde threshold als de
+    // foto-match flow (env-tunable via NEVO_VECTOR_THRESHOLD). Alléén
+    // bij FTS-miss, dus géén Gemini-call per keystroke wanneer FTS al
+    // suggesties geeft.
+    try {
+      const vec = await searchFoodsByVectorCached(q, {
+        limit,
+        minSimilarity: VECTOR_THRESHOLD,
+      });
+      if (vec.length) {
+        console.info(
+          '[nevo/search]',
+          JSON.stringify({ q, source: 'vector', hits: vec.length, top_sim: vec[0].similarity }),
+        );
+      }
+      const results: NevoSuggestion[] = vec.map((v) => ({
+        nevoCode: v.nevo_code,
+        nameNl: v.name_nl,
+        foodGroupNl: v.food_group_nl,
+      }));
+      return NextResponse.json<NevoSearchResponse>({ results });
+    } catch (vErr) {
+      // Vector down = geen catastrophe; FTS gaf al niks dus we geven
+      // gewoon lege resultaten terug. Loggen voor monitoring.
+      console.warn('[nevo/search] vector fallback failed for', q, vErr);
+      return NextResponse.json<NevoSearchResponse>({ results: [] });
+    }
   } catch (err) {
     if (err instanceof NutrientContentError) {
       return NextResponse.json({ error: 'NEVO_UNAVAILABLE' }, { status: 503 });
