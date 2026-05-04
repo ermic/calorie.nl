@@ -6,7 +6,7 @@ import { getGeminiKey } from '@/shared/lib/gemini-key-storage';
 import type { GeminiModelName } from '@/shared/api/gemini';
 import type { PhotoAnalysis } from '@/entities/meal';
 
-const MAX_FILE_BYTES = 4 * 1024 * 1024;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 export type AnalyzeResponse = {
   analysis: PhotoAnalysis;

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card } from '@/shared/ui';
 import { cn } from '@/shared/lib/cn';
 
-const MAX_MB = 4;
+const MAX_MB = 10;
 
 export type PhotoCaptureProps = {
   onAnalyze: (file: File) => void;
