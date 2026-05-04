@@ -1,7 +1,14 @@
-import { format, startOfDay, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { Card } from '@/shared/ui';
 import { getPayload } from '@/shared/lib/payload';
+import {
+  addDaysInTimezone,
+  dayKeyInTimezone,
+  DEFAULT_TIMEZONE,
+  endOfDayInTimezone,
+  startOfDayInTimezone,
+} from '@/shared/lib/timezone';
 import { calculateTDEE, type User } from '@/entities/user/model/calculations';
 import { sumMealItems } from '@/entities/meal';
 import { WeeklyTrendChart, type WeeklyPoint } from './WeeklyTrendChart';
@@ -11,23 +18,21 @@ const DAYS = 7;
 const MEAL_FETCH_LIMIT = 500;
 const ITEM_FETCH_LIMIT = 5000;
 
-// v1 NL-only: dag-bucketing volgt server-tijdzone (Europe/Amsterdam).
-// Zie TodayOverview voor dezelfde aanname.
-
 export async function WeeklyTrend({ user }: { user: User }) {
   const payload = await getPayload();
-  const today = startOfDay(new Date());
-  const start = subDays(today, DAYS - 1);
-  const endOfToday = new Date(today);
-  endOfToday.setHours(23, 59, 59, 999);
+  const tz = user.timezone || DEFAULT_TIMEZONE;
+  const now = new Date();
+  const todayStart = startOfDayInTimezone(now, tz);
+  const rangeStart = addDaysInTimezone(now, -(DAYS - 1), tz);
+  const rangeEnd = endOfDayInTimezone(now, tz);
 
   const { docs: meals } = await payload.find({
     collection: 'meals',
     where: {
       and: [
         { user: { equals: user.id } },
-        { eatenAt: { greater_than_equal: start.toISOString() } },
-        { eatenAt: { less_than_equal: endOfToday.toISOString() } },
+        { eatenAt: { greater_than_equal: rangeStart.toISOString() } },
+        { eatenAt: { less_than_equal: rangeEnd.toISOString() } },
       ],
     },
     limit: MEAL_FETCH_LIMIT,
@@ -41,8 +46,8 @@ export async function WeeklyTrend({ user }: { user: User }) {
 
   const caloriesByDay = new Map<string, number>();
   for (let i = 0; i < DAYS; i++) {
-    const d = subDays(today, DAYS - 1 - i);
-    caloriesByDay.set(format(d, 'yyyy-MM-dd'), 0);
+    const d = addDaysInTimezone(todayStart, -(DAYS - 1 - i), tz);
+    caloriesByDay.set(dayKeyInTimezone(d, tz), 0);
   }
 
   if (meals.length > 0) {
@@ -69,7 +74,7 @@ export async function WeeklyTrend({ user }: { user: User }) {
 
     for (const meal of meals) {
       if (!meal.eatenAt) continue;
-      const dayKey = format(startOfDay(new Date(meal.eatenAt)), 'yyyy-MM-dd');
+      const dayKey = dayKeyInTimezone(new Date(meal.eatenAt), tz);
       if (!caloriesByDay.has(dayKey)) continue;
       const totals = sumMealItems(itemsByMeal.get(meal.id) ?? []);
       caloriesByDay.set(dayKey, (caloriesByDay.get(dayKey) ?? 0) + totals.calories);
@@ -77,7 +82,9 @@ export async function WeeklyTrend({ user }: { user: User }) {
   }
 
   const data: WeeklyPoint[] = Array.from(caloriesByDay.entries()).map(([dayKey, calories]) => ({
-    label: format(new Date(dayKey), 'EEEEEE', { locale: nl }),
+    // dayKey is YYYY-MM-DD (zone-onafhankelijk); format als lokale UTC-Date
+    // levert hetzelfde dagcijfer op ongeacht runtime-tz.
+    label: format(new Date(`${dayKey}T12:00:00Z`), 'EEEEEE', { locale: nl }),
     calories: Math.round(calories),
   }));
 

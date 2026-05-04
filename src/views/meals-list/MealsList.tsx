@@ -1,11 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { format, isToday, isYesterday, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { Button, Card } from '@/shared/ui';
 import { apiFetch, getApiErrorMessage } from '@/shared/lib/api';
 import { formatKcal } from '@/shared/lib/format';
+import {
+  addDaysInTimezone,
+  DEFAULT_TIMEZONE,
+  dayKeyInTimezone,
+} from '@/shared/lib/timezone';
 import { MealCard } from '@/entities/meal';
 import type { MealListItem, MealsPage } from './fetch-meals';
 
@@ -13,33 +18,40 @@ type ThumbsResponse = { thumbs: Record<string, string | null> };
 
 const PAGE_SIZE = 30;
 
-function dayLabel(date: Date): string {
-  if (isToday(date)) return 'Vandaag';
-  if (isYesterday(date)) return 'Gisteren';
-  return format(date, 'EEEE d MMMM', { locale: nl });
+function dayLabel(dayKey: string, todayKey: string, yesterdayKey: string): string {
+  if (dayKey === todayKey) return 'Vandaag';
+  if (dayKey === yesterdayKey) return 'Gisteren';
+  // dayKey is YYYY-MM-DD; gebruik UTC-noon zodat de date-fns format-call
+  // zone-onafhankelijk hetzelfde dagnummer toont.
+  return format(new Date(`${dayKey}T12:00:00Z`), 'EEEE d MMMM', { locale: nl });
 }
 
-type DayGroup = { key: string; date: Date; meals: MealListItem[]; totalKcal: number };
+type DayGroup = { key: string; meals: MealListItem[]; totalKcal: number };
 
-function groupByDay(meals: MealListItem[]): DayGroup[] {
+function groupByDay(meals: MealListItem[], tz: string): DayGroup[] {
   const map = new Map<string, DayGroup>();
   for (const meal of meals) {
     const eatenAt = meal.eatenAt ? new Date(meal.eatenAt) : new Date(meal.createdAt);
-    const dayStart = startOfDay(eatenAt);
-    const key = format(dayStart, 'yyyy-MM-dd');
-    const bucket = map.get(key) ?? { key, date: dayStart, meals: [], totalKcal: 0 };
+    const key = dayKeyInTimezone(eatenAt, tz);
+    const bucket = map.get(key) ?? { key, meals: [], totalKcal: 0 };
     bucket.meals.push(meal);
     bucket.totalKcal += meal.totals.calories;
     map.set(key, bucket);
   }
-  return Array.from(map.values()).sort((a, b) => b.date.getTime() - a.date.getTime());
+  // Sorteer aflopend op kalenderdag (ISO-string sortering werkt voor YYYY-MM-DD).
+  return Array.from(map.values()).sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0));
 }
 
 export type MealsListProps = {
   initialPage: MealsPage;
+  timezone: string;
 };
 
-export function MealsList({ initialPage }: MealsListProps) {
+export function MealsList({ initialPage, timezone }: MealsListProps) {
+  const tz = timezone || DEFAULT_TIMEZONE;
+  const now = new Date();
+  const todayKey = dayKeyInTimezone(now, tz);
+  const yesterdayKey = dayKeyInTimezone(addDaysInTimezone(now, -1, tz), tz);
   const [meals, setMeals] = useState<MealListItem[]>(initialPage.meals);
   const [hasMore, setHasMore] = useState(initialPage.hasMore);
   const [nextOffset, setNextOffset] = useState(initialPage.nextOffset);
@@ -92,15 +104,19 @@ export function MealsList({ initialPage }: MealsListProps) {
     }
   };
 
-  const groups = groupByDay(meals);
+  const groups = groupByDay(meals, tz);
 
   return (
     <>
       {groups.map((group) => (
-        <section key={group.key} aria-label={dayLabel(group.date)} className="space-y-2">
+        <section
+          key={group.key}
+          aria-label={dayLabel(group.key, todayKey, yesterdayKey)}
+          className="space-y-2"
+        >
           <header className="flex items-baseline justify-between px-1">
             <h2 className="text-sm font-semibold text-ink-muted uppercase tracking-wide">
-              {dayLabel(group.date)}
+              {dayLabel(group.key, todayKey, yesterdayKey)}
             </h2>
             <span className="text-xs text-ink-muted">{formatKcal(group.totalKcal)}</span>
           </header>
@@ -111,6 +127,7 @@ export function MealsList({ initialPage }: MealsListProps) {
                   meal={{ ...meal, photoUrl: thumbs.get(meal.id) ?? null }}
                   href={`/meals/${meal.id}`}
                   totals={meal.totals}
+                  timezone={tz}
                   className="min-w-0"
                 />
               </li>

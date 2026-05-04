@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValidDecimalString, parseDecimalOrNull } from '@/shared/lib/number';
+import { isValidTimezone } from '@/shared/lib/timezone';
 
 // Form-inputs zijn altijd strings; we valideren als string (accepteert
 // zowel NL-komma als punt) en pareren naar numbers / null vlak voor de
@@ -22,6 +23,7 @@ export const ProfileSchema = z.object({
   birthDate: z.string().trim(),
   gender: z.enum(['', 'MALE', 'FEMALE', 'OTHER']),
   activityLevel: z.enum(['', 'SEDENTARY', 'LIGHT', 'MODERATE', 'ACTIVE', 'VERY_ACTIVE']),
+  timezone: z.string().trim().refine(isValidTimezone, 'Ongeldige tijdzone'),
 });
 
 export type ProfileInput = z.infer<typeof ProfileSchema>;
@@ -34,6 +36,7 @@ export type ProfilePatch = {
   birthDate?: string | null;
   gender?: 'MALE' | 'FEMALE' | 'OTHER' | null;
   activityLevel?: 'SEDENTARY' | 'LIGHT' | 'MODERATE' | 'ACTIVE' | 'VERY_ACTIVE' | null;
+  timezone?: string;
 };
 
 export function toProfilePatch(input: ProfileInput): ProfilePatch {
@@ -44,5 +47,6 @@ export function toProfilePatch(input: ProfileInput): ProfilePatch {
     birthDate: input.birthDate ? new Date(input.birthDate).toISOString() : null,
     gender: input.gender === '' ? null : input.gender,
     activityLevel: input.activityLevel === '' ? null : input.activityLevel,
+    timezone: input.timezone,
   };
 }

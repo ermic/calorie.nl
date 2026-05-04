@@ -1,5 +1,10 @@
 import { Card } from '@/shared/ui';
 import { getPayload } from '@/shared/lib/payload';
+import {
+  DEFAULT_TIMEZONE,
+  endOfDayInTimezone,
+  startOfDayInTimezone,
+} from '@/shared/lib/timezone';
 import { calculateTDEE, type User } from '@/entities/user/model/calculations';
 import { MealMacroRow, sumMealItems } from '@/entities/meal';
 import { DayCaloriesRing, type DayTotals } from '@/entities/day-log';
@@ -8,30 +13,20 @@ const DEFAULT_GOAL = 2000;
 const MEAL_FETCH_LIMIT = 100;
 const ITEM_FETCH_LIMIT = 1000;
 
-// v1 NL-only: "vandaag" volgt de server-tijdzone (Europe/Amsterdam). Voor
-// internationale uitrol → timezone op User en date-fns-tz.
-function startOfDay(d = new Date()) {
-  const out = new Date(d);
-  out.setHours(0, 0, 0, 0);
-  return out;
-}
-
-function endOfDay(d = new Date()) {
-  const out = new Date(d);
-  out.setHours(23, 59, 59, 999);
-  return out;
-}
-
 export async function TodayOverview({ user }: { user: User }) {
   const payload = await getPayload();
+  const tz = user.timezone || DEFAULT_TIMEZONE;
+  const now = new Date();
+  const dayStart = startOfDayInTimezone(now, tz);
+  const dayEnd = endOfDayInTimezone(now, tz);
 
   const { docs: meals } = await payload.find({
     collection: 'meals',
     where: {
       and: [
         { user: { equals: user.id } },
-        { eatenAt: { greater_than_equal: startOfDay().toISOString() } },
-        { eatenAt: { less_than_equal: endOfDay().toISOString() } },
+        { eatenAt: { greater_than_equal: dayStart.toISOString() } },
+        { eatenAt: { less_than_equal: dayEnd.toISOString() } },
       ],
     },
     limit: MEAL_FETCH_LIMIT,

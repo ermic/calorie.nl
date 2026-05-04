@@ -86,11 +86,26 @@ export const MEAL_TYPE_LABELS: Record<MealType, string> = {
 export const MEAL_TYPE_ORDER: readonly MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'];
 
 // Tijd-gebaseerde default voor nieuwe maaltijden; gebruikt door photo- en
-// manual-flow wizards.
-export function guessMealType(now: Date = new Date()): MealType {
-  const h = now.getHours();
+// manual-flow wizards. `tz` is optioneel — wordt gebruikt door server-
+// side callers (anders zou Date.getHours() de UTC-hour gebruiken in
+// productie). Client-side callers laten 'm leeg en krijgen de browser-tz.
+export function guessMealType(now: Date = new Date(), tz?: string): MealType {
+  const h = tz ? hourInTimezone(now, tz) : now.getHours();
   if (h < 10) return 'BREAKFAST';
   if (h < 15) return 'LUNCH';
   if (h < 21) return 'DINNER';
   return 'SNACK';
+}
+
+function hourInTimezone(date: Date, tz: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hour: 'numeric',
+    hour12: false,
+  }).formatToParts(date);
+  const hour = parts.find((p) => p.type === 'hour')?.value;
+  // Edge: bij invalid tz throwt Intl al; '24' kan voorkomen op sommige
+  // runtimes voor middernacht — normaliseer naar 0.
+  const n = hour ? Number(hour) : 0;
+  return n === 24 ? 0 : n;
 }

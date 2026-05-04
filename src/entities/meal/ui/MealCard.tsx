@@ -12,9 +12,12 @@ export type MealCardProps = {
   totals: MealMacros & { calories: number };
   href?: string;
   className?: string;
+  // User-tz; nodig voor server-rendered MealCards (RecentMeals widget).
+  // Client-rendered (MealsList) mag 'm leeg laten — browser-tz volstaat.
+  timezone?: string;
 };
 
-export function MealCard({ meal, totals, href, className }: MealCardProps) {
+export function MealCard({ meal, totals, href, className, timezone }: MealCardProps) {
   const photoSrc = safeImageSrc(meal.photoUrl);
   const content = (
     <Card
@@ -41,7 +44,7 @@ export function MealCard({ meal, totals, href, className }: MealCardProps) {
         <div className="flex items-center gap-2">
           <MealTypeBadge type={meal.mealType} />
           {meal.eatenAt && (
-            <span className="text-xs text-ink-muted">{formatTime(meal.eatenAt)}</span>
+            <span className="text-xs text-ink-muted">{formatTime(meal.eatenAt, timezone)}</span>
           )}
         </div>
         <div className="mt-1 text-sm font-semibold text-ink">{formatKcal(totals.calories)}</div>

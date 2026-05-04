@@ -3,6 +3,7 @@ import { headers as nextHeaders } from 'next/headers';
 import { z } from 'zod';
 import type { PayloadRequest } from 'payload';
 import { getPayload } from '@/shared/lib/payload';
+import { DEFAULT_TIMEZONE, startOfDayInTimezone } from '@/shared/lib/timezone';
 
 export const runtime = 'nodejs';
 
@@ -74,12 +75,6 @@ function jsonByteSize(value: unknown): number {
   } catch {
     return Number.POSITIVE_INFINITY;
   }
-}
-
-function startOfDay(d = new Date()) {
-  const out = new Date(d);
-  out.setHours(0, 0, 0, 0);
-  return out;
 }
 
 type SaveItem = z.infer<typeof ItemSchema>;
@@ -182,7 +177,10 @@ export async function POST(req: NextRequest) {
       : undefined;
 
   const eatenAt = data.eatenAt ? new Date(data.eatenAt) : new Date();
-  const dayIso = startOfDay(eatenAt).toISOString();
+  // dayLog-bucket = midnight in user-tz (als UTC-instant). Anders zou
+  // een server in UTC een meal van 00:30 NL (= 22:30 UTC vorige dag)
+  // op de verkeerde dagrij plaatsen.
+  const dayIso = startOfDayInTimezone(eatenAt, user.timezone || DEFAULT_TIMEZONE).toISOString();
 
   // dayLog find-or-create gebeurt EXPLICIET buiten de transactie. Reden:
   // bij een unique-constraint-violation (twee tabs maken simultaan een

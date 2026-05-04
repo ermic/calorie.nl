@@ -178,6 +178,7 @@ export interface User {
   birthDate?: string | null;
   gender?: ('MALE' | 'FEMALE' | 'OTHER') | null;
   activityLevel?: ('SEDENTARY' | 'LIGHT' | 'MODERATE' | 'ACTIVE' | 'VERY_ACTIVE') | null;
+  timezone: string;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -461,6 +462,7 @@ export interface UsersSelect<T extends boolean = true> {
   birthDate?: T;
   gender?: T;
   activityLevel?: T;
+  timezone?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;

@@ -32,7 +32,7 @@ export async function MealsListPage() {
             }
           />
         ) : (
-          <MealsList initialPage={initialPage} />
+          <MealsList initialPage={initialPage} timezone={user.timezone} />
         )}
       </main>
     </>

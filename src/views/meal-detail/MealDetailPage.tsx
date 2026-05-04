@@ -14,10 +14,12 @@ import {
   sumMealItems,
 } from '@/entities/meal';
 import { formatDateLong, formatKcal, formatMacro, formatTime } from '@/shared/lib/format';
+import { DEFAULT_TIMEZONE } from '@/shared/lib/timezone';
 
 export async function MealDetailPage({ id }: { id: number }) {
   const user = await requireUser();
   const payload = await getPayload();
+  const tz = user.timezone || DEFAULT_TIMEZONE;
 
   let meal;
   try {
@@ -57,9 +59,9 @@ export async function MealDetailPage({ id }: { id: number }) {
           <div className="flex items-center gap-2 text-sm text-ink-muted">
             <MealTypeBadge type={meal.mealType} />
             <span>·</span>
-            <span>{formatDateLong(eatenAt)}</span>
+            <span>{formatDateLong(eatenAt, tz)}</span>
             <span>·</span>
-            <span>{formatTime(eatenAt)}</span>
+            <span>{formatTime(eatenAt, tz)}</span>
             {meal.photoUrl && <MealPhotoThumb src={meal.photoUrl} className="ml-1" />}
           </div>
           <MealDonut

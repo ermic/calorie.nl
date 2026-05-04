@@ -8,6 +8,7 @@ import { resetPasswordEmail } from '@/shared/email/resetPassword';
 import { verifyEmail } from '@/shared/email/verifyEmail';
 import { generateToken, hashToken } from '@/shared/lib/tokens';
 import { requireServerUrl } from '@/shared/lib/server-url';
+import { DEFAULT_TIMEZONE, isValidTimezone } from '@/shared/lib/timezone';
 
 // Velden die een user niet zelf via PATCH /api/users/:id mag wijzigen.
 // 'email' staat hier zodat de change-email-flow (met dubbele
@@ -231,6 +232,19 @@ export const Users: CollectionConfig = {
         { label: 'Zeer actief', value: 'VERY_ACTIVE' },
       ],
       defaultValue: 'MODERATE',
+    },
+    {
+      name: 'timezone',
+      type: 'text',
+      required: true,
+      defaultValue: DEFAULT_TIMEZONE,
+      validate: (value: unknown) => {
+        // Geen vroege return op '': een PATCH met lege string zou via
+        // CREATE-default vrij komen, maar bij UPDATE kan het de kolom op
+        // '' zetten (DB DEFAULT geldt alleen op INSERT). Wijs het hier af.
+        if (value == null) return true;
+        return isValidTimezone(value) || 'Ongeldige IANA-tijdzone';
+      },
     },
   ],
 };

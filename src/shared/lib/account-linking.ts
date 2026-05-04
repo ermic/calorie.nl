@@ -86,6 +86,10 @@ export async function resolveOrCreateUserForProvider(
   // moet 'wachtwoord vergeten' doen om er één te zetten. lockPrivileged-
   // FieldsOnSelfWrite vult role/plan/aiPhotoCredits in als defaults bij
   // anonCreate (req.user is undefined onder overrideAccess).
+  // NB. Geen browser-tz: de OAuth-callback heeft geen client-context, dus
+  // hier valt de DB-default in (Europe/Amsterdam). User kan tz daarna in
+  // profiel aanpassen. Voor email/password-signup gebeurt detection wel
+  // via useRegister.
   const randomPwd = randomBytes(32).toString('base64url');
   // Payload v3 RequiredData verwacht role/plan/aiPhotoCredits in de input,
   // maar onze beforeValidate-hook vult die veilig in als defaults bij

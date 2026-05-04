@@ -7,8 +7,13 @@ import { Button, Card, Input, Select } from '@/shared/ui';
 import { getApiErrorMessage } from '@/shared/lib/api';
 import { pushToast, useAppDispatch } from '@/shared/store';
 import type { User } from '@/payload-types';
+import { DEFAULT_TIMEZONE, getSupportedTimezones } from '@/shared/lib/timezone';
 import { useUpdateProfile } from '../api/useUpdateProfile';
 import { ProfileSchema, toProfilePatch, type ProfileInput } from '../model/schema';
+
+// Eenmalig de IANA-zonelijst ophalen — Intl.supportedValuesOf is duur
+// genoeg om niet bij elke render te roepen.
+const TIMEZONE_OPTIONS = getSupportedTimezones();
 
 export type ProfileFormProps = {
   user: User;
@@ -22,6 +27,7 @@ function defaultValues(user: User): ProfileInput {
     birthDate: user.birthDate ? user.birthDate.slice(0, 10) : '',
     gender: user.gender ?? '',
     activityLevel: user.activityLevel ?? '',
+    timezone: user.timezone || DEFAULT_TIMEZONE,
   };
 }
 
@@ -110,6 +116,19 @@ export function ProfileForm({ user }: ProfileFormProps) {
             <option value="VERY_ACTIVE">Zeer actief</option>
           </Select>
         </div>
+
+        <Select
+          label="Tijdzone"
+          hint="Bepaalt wanneer een nieuwe dag begint voor je dagtotalen"
+          {...register('timezone')}
+          error={errors.timezone?.message}
+        >
+          {TIMEZONE_OPTIONS.map((tz) => (
+            <option key={tz} value={tz}>
+              {tz}
+            </option>
+          ))}
+        </Select>
 
         {errorMessage && (
           <p className="text-sm text-danger" role="alert">

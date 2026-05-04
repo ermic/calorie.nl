@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { EmptyState } from '@/shared/ui';
 import { UtensilsCrossed } from 'lucide-react';
 import { getPayload } from '@/shared/lib/payload';
+import { DEFAULT_TIMEZONE } from '@/shared/lib/timezone';
 import { MealCard, sumMealItems } from '@/entities/meal';
 import type { User } from '@/entities/user/model/calculations';
 
 export async function RecentMeals({ user, limit = 8 }: { user: User; limit?: number }) {
   const payload = await getPayload();
+  const tz = user.timezone || DEFAULT_TIMEZONE;
 
   const { docs: meals } = await payload.find({
     collection: 'meals',
@@ -69,6 +71,7 @@ export async function RecentMeals({ user, limit = 8 }: { user: User; limit?: num
               <MealCard
                 meal={meal}
                 href={`/meals/${meal.id}`}
+                timezone={tz}
                 totals={{
                   calories: Math.round(totals.calories),
                   protein: Math.round(totals.protein),
