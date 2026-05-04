@@ -6,7 +6,7 @@ import {
   searchFoodsByVectorCached,
   searchFoodsCached,
 } from '@/shared/api/nutrientcontent';
-import { VECTOR_THRESHOLD } from '@/features/nevo-match';
+import { VECTOR_THRESHOLD_TYPEAHEAD } from '@/features/nevo-match';
 import type { NevoSearchResponse, NevoSuggestion } from '@/entities/meal/api/useNevoSearch';
 
 export const runtime = 'nodejs';
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     try {
       const vec = await searchFoodsByVectorCached(q, {
         limit,
-        minSimilarity: VECTOR_THRESHOLD,
+        minSimilarity: VECTOR_THRESHOLD_TYPEAHEAD,
       });
       if (vec.length) {
         console.info(

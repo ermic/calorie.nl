@@ -24,22 +24,31 @@ const COOKED_PATTERNS = [
   'smoked',
 ];
 
-// Cosine-similarity drempel. Onder deze waarde vertrouwen we de
-// vector-match niet — beter `match: null` zodat Gemini's eigen macro-
-// schatting de slot vult dan een verkeerde NEVO-rij in de telling.
-// Ondergrens komt uit empirische check op fase 1f (relevant ≥ ~0.7,
-// duidelijk irrelevant ≤ ~0.55).
+// Cosine-similarity drempels. Twee modes:
 //
-// Override via env-var `NEVO_VECTOR_THRESHOLD` zodat fase 4 tunable is
-// zonder redeploy. Server-only gebruik dus geen NEXT_PUBLIC_ prefix.
-function _resolveVectorThreshold(): number {
-  const raw = process.env.NEVO_VECTOR_THRESHOLD;
-  if (raw === undefined || raw === '') return 0.65;
+// MATCH (foto-flow, /api/nevo/match): top-1-pick, dus moeten we zeker zijn.
+// 0.65 op basis van empirische check fase 1f (relevant ≥ ~0.7, duidelijk
+// irrelevant ≤ ~0.55).
+//
+// TYPEAHEAD (handmatig zoeken, /api/nevo/search): toont een lijst, de
+// gebruiker kiest zelf — ruimer suggesteren is OK. 0.60 vangt edge-cases
+// als "noedels" → "Mihoen gekookt" (sim 0.648) op die NEVO's NL-naam-
+// gat veroorzaakt.
+//
+// Beide override-baar via env-vars zodat we ze in fase 4 tunen zonder
+// redeploy. Server-only gebruik dus géén NEXT_PUBLIC_ prefix.
+function _resolveThreshold(envName: string, fallback: number): number {
+  const raw = process.env[envName];
+  if (raw === undefined || raw === '') return fallback;
   const v = Number.parseFloat(raw);
-  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.65;
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : fallback;
 }
 
-export const VECTOR_THRESHOLD = _resolveVectorThreshold();
+export const VECTOR_THRESHOLD = _resolveThreshold('NEVO_VECTOR_THRESHOLD', 0.65);
+export const VECTOR_THRESHOLD_TYPEAHEAD = _resolveThreshold(
+  'NEVO_VECTOR_THRESHOLD_TYPEAHEAD',
+  0.6,
+);
 
 // Hoeveel vector-kandidaten we ophalen. >5 voegt zelden iets toe en
 // kost extra DB-werk per missing FTS-hit.

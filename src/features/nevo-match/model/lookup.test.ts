@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { SearchHit, VectorHit } from '@/shared/api/nutrientcontent';
 
-import { lookupOne, pickMatch, scoreHit, stripParens, VECTOR_THRESHOLD } from './lookup';
+import {
+  lookupOne,
+  pickMatch,
+  scoreHit,
+  stripParens,
+  VECTOR_THRESHOLD,
+  VECTOR_THRESHOLD_TYPEAHEAD,
+} from './lookup';
 
 // ─── Test-helpers ──────────────────────────────────────────────────────
 
@@ -263,6 +270,13 @@ describe('pickMatch — threshold contract', () => {
     // binnenkomt is dus al boven die threshold. pickMatch zelf hoeft niet
     // te filteren — maar de constante moet wél consistent zijn.
     expect(VECTOR_THRESHOLD).toBe(0.65);
+  });
+
+  it('VECTOR_THRESHOLD_TYPEAHEAD is 0.60 (lager dan match) voor typeahead-suggesties', () => {
+    // Typeahead toont een lijst — de gebruiker kiest, dus we mogen ruimer
+    // suggesteren. Match-flow pakt zelf de top-1 en moet zekerder zijn.
+    expect(VECTOR_THRESHOLD_TYPEAHEAD).toBe(0.6);
+    expect(VECTOR_THRESHOLD_TYPEAHEAD).toBeLessThan(VECTOR_THRESHOLD);
   });
 });
 
