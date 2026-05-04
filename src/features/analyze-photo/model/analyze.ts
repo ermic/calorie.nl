@@ -35,13 +35,16 @@ REGELS:
 - Geef GEEN macro's of calorieën — dat doen we later via de NEVO-database.
 - Geef wel een Nederlandse 'visualHint' over de portiegrootte zoals zichtbaar (bv. "halve schaal", "1 medium", "dunne plak van ~1 cm").
 - 'confidence' (0-1): hoe zeker ben je dat de items en namen kloppen.
+- Bij producten met een NIET-EETBARE schil/pit/kern die zichtbaar is op de foto, geef 'edibleFraction' (0..1): de fractie van het bruto-gewicht dat eetbaar vlees is. Laat het veld weg of zet 1.0 wanneer alles eetbaar is (gepelde banaan, sla, kipfilet). Richtwaardes:
+  banaan met schil ~0.65, sinaasappel/mandarijn ~0.70, citroen/limoen ~0.60, ananas met schil+kern ~0.50, mango met pit ~0.65, avocado met pit+schil ~0.70, watermeloen met schil ~0.55, kiwi met vel ~0.85, granaatappel ~0.55, passievrucht ~0.40.
 
 Antwoord ALLEEN met geldige JSON:
 {
   "confidence": 0.85,
   "items": [
     { "searchName": "chicken fillet", "state": "prepared", "visualHint": "1 filet van ~150g" },
-    { "searchName": "rice", "state": "boiled", "visualHint": "halve borddiameter" }
+    { "searchName": "rice", "state": "boiled", "visualHint": "halve borddiameter" },
+    { "searchName": "banana", "state": "raw", "visualHint": "1 ongepelde banaan op weegschaal", "edibleFraction": 0.65 }
   ],
   "notes": "Optionele toelichting"
 }`;
@@ -54,6 +57,7 @@ const RecognizeSchema = z.object({
         searchName: z.string().min(1),
         state: z.string().optional(),
         visualHint: z.string().optional(),
+        edibleFraction: z.number().min(0).max(1).optional(),
       }),
     )
     .min(1),
@@ -333,7 +337,12 @@ export async function analyzePhoto(file: File, apiKey: string, logger: PipelineL
 
   logger({ level: 'info', message: 'Stap 2: NEVO matchen via /api/nevo/match…' });
   const matched = await matchIngredients(
-    recognized.items.map((i) => ({ name: i.searchName, state: i.state, visualHint: i.visualHint })),
+    recognized.items.map((i) => ({
+      name: i.searchName,
+      state: i.state,
+      visualHint: i.visualHint,
+      edibleFraction: i.edibleFraction,
+    })),
   );
   const matchedWithCode = matched.filter((m) => m.match);
   const unmatched = matched.filter((m) => !m.match);
@@ -376,13 +385,42 @@ export async function analyzePhoto(file: File, apiKey: string, logger: PipelineL
   const allowed = new Set(matchedWithCode.map((m) => m.match!.nevoCode));
   const calcInput = estimated.matched.filter((i) => allowed.has(i.nevoCode));
 
+  // Bruto-naar-eetbaar correctie: voor items met niet-eetbare schil/pit
+  // (banaan, sinaasappel, etc.) heeft Gemini step-1 een 'edibleFraction'
+  // gegeven. We scalen het bruto gewogen gewicht naar het netto eetbare
+  // gewicht vóór /calculate, anders rekenen we kcal van NEVO over het
+  // schilgewicht óók — leverde 596 kcal voor een banaan (bug 2026-05-04).
+  const fractionByCode = new Map<number, number>(
+    matchedWithCode.map((m) => [m.match!.nevoCode, m.edibleFraction ?? 1]),
+  );
+  const scaled = calcInput.map((i) => ({
+    nevoCode: i.nevoCode,
+    grams: Math.round(i.grams * (fractionByCode.get(i.nevoCode) ?? 1)),
+  }));
+  const peeled = calcInput.filter(
+    (i) => (fractionByCode.get(i.nevoCode) ?? 1) < 1,
+  );
+  if (peeled.length) {
+    logger({
+      level: 'info',
+      message: `Bruto→eetbaar correctie op ${peeled.length} item(s)`,
+      data: peeled.map((i) => {
+        const f = fractionByCode.get(i.nevoCode) ?? 1;
+        const m = matchedWithCode.find((mm) => mm.match!.nevoCode === i.nevoCode);
+        return {
+          name: m?.match?.nameNl ?? `nevo ${i.nevoCode}`,
+          gross: i.grams,
+          edibleFraction: f,
+          net: Math.round(i.grams * f),
+        };
+      }),
+    });
+  }
+
   let nevoItems: PhotoAnalysis['items'] = [];
   if (calcInput.length) {
     logger({ level: 'info', message: 'Stap 4: macro\'s berekenen via /api/nevo/calculate…' });
-    const calc = await fetchCalculate(
-      calcInput.map((i) => ({ nevoCode: i.nevoCode, grams: i.grams })),
-      logger,
-    );
+    const calc = await fetchCalculate(scaled, logger);
     logger({
       level: 'info',
       message: `Stap 4 klaar: ${calc.totals.kcal} kcal totaal (NEVO)`,
@@ -404,14 +442,27 @@ export async function analyzePhoto(file: File, apiKey: string, logger: PipelineL
   // Items zonder NEVO-match krijgen Gemini's eigen macro-schatting; die
   // gaan zonder nevoCode in het overzicht zodat de gebruiker ze later
   // kan bijschaven.
-  const geminiItems: PhotoAnalysis['items'] = estimated.unmatched.map((u) => ({
-    name: u.nameNl,
-    estimatedGrams: u.grams,
-    calories: u.kcal,
-    protein: u.protein_g,
-    carbs: u.carbs_g,
-    fat: u.fat_g,
-  }));
+  //
+  // Voor unmatched items met edibleFraction < 1 schalen we BEIDE grams en
+  // alle macro's lineair. Gemini schat de macro's voor het bruto-gewicht
+  // (banaan met schil = 200g) terwijl de gebruiker alleen het vlees
+  // (130g) eet. Lineaire scaling is correct omdat macro's per gram
+  // constant zijn voor een ingrediënt.
+  const fractionByInput = new Map<string, number>(
+    unmatched.map((m) => [m.inputName, m.edibleFraction ?? 1]),
+  );
+  const geminiItems: PhotoAnalysis['items'] = estimated.unmatched.map((u) => {
+    const f = fractionByInput.get(u.searchName) ?? 1;
+    const scale = (n: number) => Math.round(n * f * 10) / 10;
+    return {
+      name: u.nameNl,
+      estimatedGrams: Math.round(u.grams * f),
+      calories: Math.round(u.kcal * f),
+      protein: scale(u.protein_g),
+      carbs: scale(u.carbs_g),
+      fat: scale(u.fat_g),
+    };
+  });
 
   const items = [...nevoItems, ...geminiItems];
   if (!items.length) {
