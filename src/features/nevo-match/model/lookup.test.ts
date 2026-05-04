@@ -141,6 +141,50 @@ describe('pickMatch — FTS hits rejected (word soup)', () => {
 // vond "Onion red raw" (NEVO 5459) maar werd afgewezen door de strict-
 // startsWith first-word check. Vector ving het op, maar dat is overhead;
 // de FTS-top was al goed.
+// Productie-regressie 2026-05-04: foto van een banaan werd gematcht op
+// NEVO 5255 "Bananenbrood" (596 kcal/200g) i.p.v. NEVO 151 "Banaan"
+// (88 kcal/100g). Beide kandidaten scoren +10 op first-word, en omdat
+// "Banana" geen "raw"-woord in name_en heeft krijgt 'Banaan' geen state-
+// bonus. Sort-tie → eerste FTS-resultaat won.
+describe('pickMatch — tiebreak op primaire vorm bij gelijke score', () => {
+  it('prefers "Banana" over "Banana bread" when state=raw and both score equally', () => {
+    const fts: SearchHit[] = [
+      // Volgorde uit echte FTS-output: bread komt EERST (hogere ts_rank)
+      _hit({ nevo_code: 5255, name_en: 'Banana bread', name_nl: 'Bananenbrood' }),
+      _hit({ nevo_code: 151, name_en: 'Banana', name_nl: 'Banaan' }),
+      _hit({
+        nevo_code: 2394,
+        name_en: 'Eclair filled w banana and whipped cream',
+        name_nl: 'Soes bananen-',
+      }),
+      _hit({ nevo_code: 2430, name_en: 'Fritter banana', name_nl: 'Beignet banaan-' }),
+    ];
+    const out = pickMatch('banana', 'raw', fts, []);
+    expect(out.source).toBe('fts');
+    expect(out.match?.nevoCode).toBe(151);
+  });
+
+  it('prefers exact name match over longer variants', () => {
+    // Beide first-word match, scores tied → exact-match wint over alleen-prefix.
+    const fts: SearchHit[] = [
+      _hit({ nevo_code: 1, name_en: 'Apple turnover baked', name_nl: 'Appelflap' }),
+      _hit({ nevo_code: 2, name_en: 'Apple', name_nl: 'Appel' }),
+    ];
+    const out = pickMatch('apple', 'raw', fts, []);
+    expect(out.match?.nevoCode).toBe(2);
+  });
+
+  it('keeps state-aware ordering: longer name with matching state still wins', () => {
+    // Tiebreak mag scoreHit's state-bonus NIET overrulen.
+    const fts: SearchHit[] = [
+      _hit({ nevo_code: 1, name_en: 'Rice white', name_nl: 'Rijst' }),  // geen state-info
+      _hit({ nevo_code: 2, name_en: 'Rice white boiled', name_nl: 'Rijst gekookt' }),
+    ];
+    const out = pickMatch('rice', 'boiled', fts, []);
+    expect(out.match?.nevoCode).toBe(2); // gekookt wint dankzij state-bonus
+  });
+});
+
 describe('pickMatch — modifier-noun word order swap', () => {
   it('accepts FTS top when input and hit have swapped first/last words', () => {
     const fts: SearchHit[] = [

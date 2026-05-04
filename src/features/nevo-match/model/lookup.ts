@@ -196,7 +196,19 @@ export function pickMatch(
   if (ftsHits.length) {
     ftsRanked = ftsHits
       .map((h) => ({ hit: h, score: scoreHit(h, cleaned, state) }))
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => {
+        // Eerst score (hoger = beter).
+        if (b.score !== a.score) return b.score - a.score;
+        // Tiebreak 1: exacte naam-match (input == name_en) wint.
+        // Voorkomt dat "banana" + state=raw op "Banana bread" valt
+        // wanneer "Banana" zelf óók in de hit-pool zit (beide score 10
+        // omdat geen van beide een "raw"-token bevat).
+        const aExact = a.hit.name_en.toLowerCase() === cleaned ? 1 : 0;
+        const bExact = b.hit.name_en.toLowerCase() === cleaned ? 1 : 0;
+        if (aExact !== bExact) return bExact - aExact;
+        // Tiebreak 2: kortere naam = primaire vorm.
+        return a.hit.name_en.length - b.hit.name_en.length;
+      });
 
     const top = ftsRanked[0];
     if (_firstWordsCompatible(cleaned, top.hit.name_en)) {
