@@ -126,15 +126,14 @@ export function MealItemEditor({ item, onChange, onRemove, className }: MealItem
       </div>
       <div className="grid grid-cols-3 gap-2 text-xs">
         <label className="flex flex-col gap-1">
-          <span className="text-ink-muted">Hoeveelheid</span>
+          <span className="text-ink-muted">Hoeveelheid ({item.unit || 'g'})</span>
           <Input
             type="text"
             inputMode="decimal"
             pattern={DECIMAL_PATTERN}
             value={item.quantity}
-            suffix={item.unit || 'g'}
             onChange={(e) => handleQuantity(e.target.value)}
-            aria-label="Hoeveelheid"
+            aria-label={`Hoeveelheid in ${item.unit || 'gram'}`}
           />
         </label>
         <label className="flex flex-col gap-1">
