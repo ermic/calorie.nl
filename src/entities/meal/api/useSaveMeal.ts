@@ -18,6 +18,9 @@ export type SaveMealPipelineEntry = {
 export type SaveMealInput = {
   mealType: MealType;
   eatenAt?: string;
+  // Korte NL-samenvatting uit de AI-herkenning. Optioneel: niet-AI-flows
+  // (handmatige meal) en oude analyses sturen 'm niet mee.
+  title?: string;
   aiAnalyzed: boolean;
   aiConfidence?: number;
   // 1 (slecht) t/m 5 (top); afwezig wanneer de gebruiker geen smiley koos.

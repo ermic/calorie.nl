@@ -8,7 +8,7 @@ import { MealMacroRow, type MealMacros } from './MealMacroRow';
 import { MealTypeBadge } from './MealTypeBadge';
 
 export type MealCardProps = {
-  meal: Pick<Meal, 'id' | 'mealType' | 'eatenAt' | 'photoUrl'>;
+  meal: Pick<Meal, 'id' | 'mealType' | 'eatenAt' | 'photoUrl' | 'title'>;
   totals: MealMacros & { calories: number };
   href?: string;
   className?: string;
@@ -23,7 +23,7 @@ export function MealCard({ meal, totals, href, className, timezone }: MealCardPr
     <Card
       padded
       interactive={Boolean(href)}
-      className={cn('flex items-center gap-3 min-w-[260px]', className)}
+      className={cn('flex items-center gap-3 min-w-[260px] max-w-[33%]', className)}
     >
       {photoSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -47,6 +47,11 @@ export function MealCard({ meal, totals, href, className, timezone }: MealCardPr
             <span className="text-xs text-ink-muted">{formatTime(meal.eatenAt, timezone)}</span>
           )}
         </div>
+        {meal.title && (
+          <p className="mt-1 text-sm font-medium text-ink line-clamp-2" title={meal.title}>
+            {meal.title}
+          </p>
+        )}
         <div className="mt-1 text-sm font-semibold text-ink">{formatKcal(totals.calories)}</div>
         <MealMacroRow className="mt-1" macros={totals} compact />
       </div>

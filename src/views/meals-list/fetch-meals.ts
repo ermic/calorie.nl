@@ -6,7 +6,7 @@ import type { User } from '@/payload-types';
 // rijen × ~10KB thumb zou de SSR-response anders met ~300KB opblazen.
 // De client haalt thumbs apart op via /api/meals/thumbs en mergt ze
 // per id voordat ze MealCard worden ingedoken.
-export type MealListItem = Pick<Meal, 'id' | 'mealType' | 'eatenAt' | 'createdAt'> & {
+export type MealListItem = Pick<Meal, 'id' | 'mealType' | 'eatenAt' | 'createdAt' | 'title'> & {
   totals: MealTotals;
 };
 
@@ -81,6 +81,7 @@ export async function fetchMealsPage({
       mealType: m.mealType,
       eatenAt: m.eatenAt,
       createdAt: m.createdAt,
+      title: m.title ?? null,
       totals: {
         calories: Math.round(totals.calories),
         protein: Math.round(totals.protein),

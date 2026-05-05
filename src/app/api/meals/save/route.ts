@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { PayloadRequest } from 'payload';
 import { getPayload } from '@/shared/lib/payload';
 import { DEFAULT_TIMEZONE, startOfDayInTimezone } from '@/shared/lib/timezone';
+import { MEAL_TITLE_MAX_LENGTH } from '@/entities/meal';
 
 export const runtime = 'nodejs';
 
@@ -55,6 +56,19 @@ const SaveSchema = z.object({
       const now = Date.now();
       return t >= now - EATEN_AT_MAX_PAST_MS && t <= now + EATEN_AT_MAX_FUTURE_MS;
     }, 'eatenAt buiten toegestaan bereik (max 30 dagen geleden t/m 1 dag vooruit)')
+    .optional(),
+  // Korte NL-samenvatting (AI of door user bewerkt). Optioneel: handmatige
+  // flow stuurt 'm niet mee. Cap = DB-kolomgrootte (varchar 120) — strakke
+  // limiet ipv ongelimiteerd zodat een gehackte client geen kilobytes per
+  // meal kan opslaan. Lege/whitespace-strings worden naar undefined
+  // genormaliseerd zodat de DB null krijgt ipv een lege titel.
+  title: z
+    .string()
+    .max(MEAL_TITLE_MAX_LENGTH)
+    .transform((v) => {
+      const t = v.trim();
+      return t.length === 0 ? undefined : t;
+    })
     .optional(),
   aiAnalyzed: z.boolean().default(false),
   aiConfidence: z.number().min(0).max(1).optional(),
@@ -250,6 +264,7 @@ export async function POST(req: NextRequest) {
         dayLog: dayLog.id,
         mealType: data.mealType,
         eatenAt: eatenAt.toISOString(),
+        title: data.title,
         aiAnalyzed: data.aiAnalyzed,
         aiConfidence: data.aiConfidence,
         userRating: data.userRating,

@@ -85,6 +85,12 @@ export const MEAL_TYPE_LABELS: Record<MealType, string> = {
 
 export const MEAL_TYPE_ORDER: readonly MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'];
 
+// Hard cap op een meal-titel (AI-summary of door-user bewerkt). Eén bron
+// voor zod-validatie in /api/meals/save, het maxLength in de Payload-
+// collection en de input-cap in de review-UI. Komt overeen met de
+// varchar-kolom uit migration 20260505_120000_add_meal_title.
+export const MEAL_TITLE_MAX_LENGTH = 120;
+
 // Tijd-gebaseerde default voor nieuwe maaltijden; gebruikt door photo- en
 // manual-flow wizards. `tz` is optioneel — wordt gebruikt door server-
 // side callers (anders zou Date.getHours() de UTC-hour gebruiken in

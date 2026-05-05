@@ -7,6 +7,10 @@ export type AddMealPhotoState = {
   step: Step;
   items: EditableMealItem[];
   mealType: MealType;
+  // Korte NL-samenvatting uit de AI-herkenning (bv. "kipfilet met rijst").
+  // null wanneer het model 'm niet teruggaf — dan slaan we niets op en valt
+  // de UI terug op het mealType-label.
+  title: string | null;
   confidence: number | null;
   notes: string | null;
   // Onveranderlijke kopie van de oorspronkelijke AI-analyse — los van
@@ -24,6 +28,7 @@ const initialState: AddMealPhotoState = {
   step: 'capture',
   items: [],
   mealType: 'LUNCH',
+  title: null,
   confidence: null,
   notes: null,
   aiSnapshot: null,
@@ -52,11 +57,16 @@ const slice = createSlice({
           original: snapshot,
         };
       });
+      state.title = action.payload.title?.trim() || null;
       state.confidence = action.payload.confidence;
       state.notes = action.payload.notes ?? null;
       state.aiSnapshot = action.payload;
       state.userRating = null;
       state.step = 'review';
+    },
+    titleSet(state, action: PayloadAction<string | null>) {
+      const next = action.payload?.trim() ?? '';
+      state.title = next.length ? next : null;
     },
     ratingSet(state, action: PayloadAction<number | null>) {
       state.userRating = action.payload;
@@ -99,6 +109,7 @@ export const {
   itemAdded,
   mealTypeSet,
   ratingSet,
+  titleSet,
   wizardReset,
   backToCapture,
 } = slice.actions;

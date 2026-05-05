@@ -11,6 +11,7 @@ import * as migration_20260430_144148_normalize_user_emails_lowercase from './20
 import * as migration_20260430_145537_add_passkey_credentials from './20260430_145537_add_passkey_credentials';
 import * as migration_20260430_153137_cascade_user_delete from './20260430_153137_cascade_user_delete';
 import * as migration_20260504_223740_add_user_timezone from './20260504_223740_add_user_timezone';
+import * as migration_20260505_120000_add_meal_title from './20260505_120000_add_meal_title';
 
 export const migrations = [
   {
@@ -77,5 +78,10 @@ export const migrations = [
     up: migration_20260504_223740_add_user_timezone.up,
     down: migration_20260504_223740_add_user_timezone.down,
     name: '20260504_223740_add_user_timezone',
+  },
+  {
+    up: migration_20260505_120000_add_meal_title.up,
+    down: migration_20260505_120000_add_meal_title.down,
+    name: '20260505_120000_add_meal_title',
   },
 ];

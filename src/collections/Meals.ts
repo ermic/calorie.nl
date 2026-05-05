@@ -9,8 +9,8 @@ import {
 export const Meals: CollectionConfig = {
   slug: 'meals',
   admin: {
-    useAsTitle: 'mealType',
-    defaultColumns: ['mealType', 'eatenAt', 'user', 'aiAnalyzed'],
+    useAsTitle: 'title',
+    defaultColumns: ['title', 'mealType', 'eatenAt', 'user', 'aiAnalyzed'],
   },
   access: {
     read: ownByUser,
@@ -37,6 +37,16 @@ export const Meals: CollectionConfig = {
       required: true,
     },
     { name: 'eatenAt', type: 'date', defaultValue: () => new Date() },
+    // Korte NL-titel uit de AI-foto-analyse (bv. "kipfilet met rijst").
+    // Optioneel: handmatig toegevoegde meals en oude foto-analyses (vóór
+    // de title-prompt) hebben 'm niet — UI valt dan terug op het
+    // mealType-label. Lengte = z.string().max(120) in de save-route.
+    {
+      name: 'title',
+      type: 'text',
+      maxLength: 120,
+      admin: { description: 'Korte samenvatting van de maaltijd, zoals herkend door de AI.' },
+    },
     {
       name: 'mealType',
       type: 'select',

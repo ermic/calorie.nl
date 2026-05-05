@@ -246,6 +246,10 @@ export interface Meal {
   user: number | User;
   dayLog: number | DayLog;
   eatenAt?: string | null;
+  /**
+   * Korte samenvatting van de maaltijd, zoals herkend door de AI.
+   */
+  title?: string | null;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK';
   photoUrl?: string | null;
   aiAnalyzed?: boolean | null;
@@ -525,6 +529,7 @@ export interface MealsSelect<T extends boolean = true> {
   user?: T;
   dayLog?: T;
   eatenAt?: T;
+  title?: T;
   mealType?: T;
   photoUrl?: T;
   aiAnalyzed?: T;

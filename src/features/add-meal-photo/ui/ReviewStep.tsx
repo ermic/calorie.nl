@@ -4,13 +4,14 @@ import { Plus, RefreshCw, Save } from 'lucide-react';
 import {
   MealItemEditor,
   MealRatingPicker,
+  MEAL_TITLE_MAX_LENGTH,
   MEAL_TYPE_LABELS,
   MEAL_TYPE_ORDER,
   sumMealItems,
   type MealRating,
   type MealType,
 } from '@/entities/meal';
-import { Button, Card, Tabs, TabsList, TabsTrigger } from '@/shared/ui';
+import { Button, Card, Input, Tabs, TabsList, TabsTrigger } from '@/shared/ui';
 import { formatKcal, formatMacro } from '@/shared/lib/format';
 import { useAppDispatch, useAppSelector } from '@/shared/store';
 import {
@@ -20,6 +21,7 @@ import {
   itemUpdated,
   mealTypeSet,
   ratingSet,
+  titleSet,
 } from '../model/slice';
 
 export type ReviewStepProps = {
@@ -31,7 +33,9 @@ export type ReviewStepProps = {
 
 export function ReviewStep({ onSave, saving, error, photoUrl }: ReviewStepProps) {
   const dispatch = useAppDispatch();
-  const { items, mealType, confidence, notes, userRating } = useAppSelector((s) => s.addMealPhoto);
+  const { items, mealType, title, confidence, notes, userRating } = useAppSelector(
+    (s) => s.addMealPhoto,
+  );
   const totals = sumMealItems(items);
   const lowConfidence = confidence !== null && confidence < 0.5;
 
@@ -58,19 +62,28 @@ export function ReviewStep({ onSave, saving, error, photoUrl }: ReviewStepProps)
         </Card>
       )}
 
-      <Card padded>
-        <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
-          Type maaltijd
-        </label>
-        <Tabs value={mealType} onValueChange={(v) => dispatch(mealTypeSet(v as MealType))}>
-          <TabsList className="w-full [&>button]:flex-1">
-            {MEAL_TYPE_ORDER.map((t) => (
-              <TabsTrigger key={t} value={t}>
-                {MEAL_TYPE_LABELS[t]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+      <Card padded className="space-y-3">
+        <Input
+          label="Titel"
+          value={title ?? ''}
+          maxLength={MEAL_TITLE_MAX_LENGTH}
+          placeholder="Bijv. kipfilet met rijst"
+          onChange={(e) => dispatch(titleSet(e.target.value))}
+        />
+        <div>
+          <label className="block text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
+            Type maaltijd
+          </label>
+          <Tabs value={mealType} onValueChange={(v) => dispatch(mealTypeSet(v as MealType))}>
+            <TabsList className="w-full [&>button]:flex-1">
+              {MEAL_TYPE_ORDER.map((t) => (
+                <TabsTrigger key={t} value={t}>
+                  {MEAL_TYPE_LABELS[t]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
       </Card>
 
       <div className="space-y-2">

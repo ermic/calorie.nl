@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getVisionModel, type ActiveVisionModel, type GeminiModelName } from '@/shared/api/gemini';
-import type { PhotoAnalysis } from '@/entities/meal';
+import { MEAL_TITLE_MAX_LENGTH, type PhotoAnalysis } from '@/entities/meal';
 import { fileToInlineData, type InlineImage } from '../lib/image-bytes';
 import { matchIngredients, type MatchedItem } from './match';
 
@@ -37,9 +37,13 @@ REGELS:
 - 'confidence' (0-1): hoe zeker ben je dat de items en namen kloppen.
 - Bij producten met een NIET-EETBARE schil/pit/kern die zichtbaar is op de foto, geef 'edibleFraction' (0..1): de fractie van het bruto-gewicht dat eetbaar vlees is. Laat het veld weg of zet 1.0 wanneer alles eetbaar is (gepelde banaan, sla, kipfilet). Richtwaardes:
   banaan met schil ~0.65, sinaasappel/mandarijn ~0.70, citroen/limoen ~0.60, ananas met schil+kern ~0.50, mango met pit ~0.65, avocado met pit+schil ~0.70, watermeloen met schil ~0.55, kiwi met vel ~0.85, granaatappel ~0.55, passievrucht ~0.40.
+- Geef ook een korte Nederlandse 'title' van max 60 tekens die de maaltijd als geheel beschrijft, zonder hoofdletters voor elk woord en zonder afsluitende punt. Gebruik herkenbare gerecht-naam als die duidelijk is, anders een opsomming van de hoofdcomponenten.
+  GOED: "kipfilet met rijst en wokgroenten", "spaghetti bolognese", "ongepelde banaan", "boterham met kaas"
+  FOUT: "Maaltijd met diverse ingrediënten", "Foto van eten", "Lunch."
 
 Antwoord ALLEEN met geldige JSON:
 {
+  "title": "kipfilet met rijst en wokgroenten",
   "confidence": 0.85,
   "items": [
     { "searchName": "chicken fillet", "state": "prepared", "visualHint": "1 filet van ~150g" },
@@ -50,6 +54,13 @@ Antwoord ALLEEN met geldige JSON:
 }`;
 
 const RecognizeSchema = z.object({
+  // Korte NL-titel die de maaltijd samenvat. Optioneel: oudere prompts of
+  // model-fallbacks kunnen 'm weglaten — dan toont de UI gewoon het
+  // mealType-label. Bewust géén min/max-cap: een te lange of lege titel
+  // mag de hele analyse niet laten falen op een sierveld. We truncaten
+  // downstream tot MEAL_TITLE_MAX_LENGTH; de save-route handhaaft de
+  // hard cap aan de security-boundary.
+  title: z.string().optional(),
   confidence: z.number().min(0).max(1),
   items: z
     .array(
@@ -476,7 +487,9 @@ export async function analyzePhoto(file: File, apiKey: string, logger: PipelineL
     });
   }
 
+  const trimmedTitle = recognized.title?.trim().slice(0, MEAL_TITLE_MAX_LENGTH);
   const analysis: PhotoAnalysis = {
+    title: trimmedTitle && trimmedTitle.length > 0 ? trimmedTitle : undefined,
     confidence: recognized.confidence,
     notes: recognized.notes,
     items,

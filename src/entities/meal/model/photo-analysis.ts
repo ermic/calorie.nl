@@ -13,6 +13,10 @@ export type PhotoAnalysisItem = {
 };
 
 export type PhotoAnalysis = {
+  // Korte NL-samenvatting van de maaltijd ("kipfilet met rijst"). Optioneel:
+  // oudere analyses (vóór de title-prompt) en eventuele model-fallbacks
+  // hebben 'm niet — dan toont de UI het mealType-label.
+  title?: string;
   confidence: number;
   items: PhotoAnalysisItem[];
   notes?: string;

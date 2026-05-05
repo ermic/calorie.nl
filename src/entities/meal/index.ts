@@ -1,4 +1,5 @@
 export {
+  MEAL_TITLE_MAX_LENGTH,
   MEAL_TYPE_LABELS,
   MEAL_TYPE_ORDER,
   guessMealType,

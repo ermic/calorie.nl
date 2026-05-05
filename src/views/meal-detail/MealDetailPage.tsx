@@ -6,7 +6,6 @@ import { DeleteMealButton } from '@/features/delete-meal';
 import { getPayload } from '@/shared/lib/payload';
 import { requireUser } from '@/shared/lib/auth-guard';
 import {
-  MEAL_TYPE_LABELS,
   MealDonut,
   MealMacroRow,
   MealPhotoThumb,
@@ -53,9 +52,12 @@ export async function MealDetailPage({ id }: { id: number }) {
 
   return (
     <>
-      <AppHeader title={MEAL_TYPE_LABELS[meal.mealType]} back />
+      <AppHeader title="Maaltijd" back />
       <main className="flex-1 px-4 py-4 mx-auto w-full max-w-2xl space-y-5">
         <Card padded className="flex flex-col items-center text-center gap-3">
+          {meal.title && (
+            <h1 className="text-lg font-semibold text-ink">{meal.title}</h1>
+          )}
           <div className="flex items-center gap-2 text-sm text-ink-muted">
             <MealTypeBadge type={meal.mealType} />
             <span>·</span>

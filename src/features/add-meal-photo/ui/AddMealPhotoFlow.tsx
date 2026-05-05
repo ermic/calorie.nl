@@ -17,7 +17,7 @@ import { PipelineLogPane } from './PipelineLogPane';
 export function AddMealPhotoFlow() {
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const { step, items, mealType, confidence, aiSnapshot, userRating } = useAppSelector(
+  const { step, items, mealType, title, confidence, aiSnapshot, userRating } = useAppSelector(
     (s) => s.addMealPhoto,
   );
   const hasKey = useHasGeminiKey();
@@ -96,6 +96,7 @@ export function AddMealPhotoFlow() {
       {
         mealType,
         eatenAt: new Date().toISOString(),
+        title: title ?? undefined,
         aiAnalyzed: true,
         aiConfidence: confidence ?? undefined,
         userRating: userRating ?? undefined,
