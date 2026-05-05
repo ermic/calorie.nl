@@ -16,6 +16,9 @@ import { detectImageType } from './image-mime';
 
 const THUMB_MAX_DIM = 256;
 const WEBP_QUALITY = 0.55;
+// JPEG iets hogere quality omdat 'ie minder efficiënt comprimeert dan
+// WebP; nog steeds ruim onder de 60KB-cap voor 256×256.
+const JPEG_QUALITY = 0.7;
 
 async function loadBitmap(blob: Blob): Promise<ImageBitmap | HTMLImageElement> {
   if (typeof createImageBitmap === 'function') {
@@ -76,6 +79,13 @@ export async function generateMealThumb(file: File): Promise<string | null> {
       if (!ctx) return null;
       ctx.drawImage(bitmap as CanvasImageSource, 0, 0, width, height);
       dataUrl = canvas.toDataURL('image/webp', WEBP_QUALITY);
+      // iOS Safari < 16 en sommige iOS PWA-WebViews honoreren WebP-
+      // encoding niet en geven dan een PNG terug. Detecteer dat en val
+      // terug op JPEG — universeel ondersteund en server-zijdig
+      // toegestaan.
+      if (!dataUrl.startsWith('data:image/webp;')) {
+        dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+      }
     } finally {
       // ImageBitmap pakt VRAM tot expliciete close (of GC); op iOS kan
       // drawImage incidenteel throwen — finally zorgt dat we alsnog
@@ -83,10 +93,12 @@ export async function generateMealThumb(file: File): Promise<string | null> {
       if ('close' in bitmap) bitmap.close();
     }
 
-    // Sommige browsers (bv. Firefox <93) kunnen toDataURL('image/webp')
-    // negeren en een PNG-data-URL teruggeven. Filter die uit zodat de
-    // server-side validatie niet verrast wordt.
-    if (!dataUrl.startsWith('data:image/webp;')) return null;
+    if (
+      !dataUrl.startsWith('data:image/webp;') &&
+      !dataUrl.startsWith('data:image/jpeg;')
+    ) {
+      return null;
+    }
     return dataUrl;
   } catch {
     return null;

@@ -36,8 +36,14 @@ const PIPELINE_DEBUG_MAX_BYTES = 256 * 1024;
 // 5-15KB als data-URL. Cap ruim op 60KB zodat raar-geformatteerde
 // foto's (transparantie, fotosynthese-prints) ook door de check
 // komen, maar een gecrafte multi-MB-string niet de DB instuurt.
+//
+// JPEG-fallback voor iOS Safari < 16 / sommige iOS PWA-WebViews die
+// canvas.toDataURL('image/webp') niet honoreren.
 const PHOTO_THUMB_MAX_LENGTH = 60_000;
-const PHOTO_THUMB_PREFIX = 'data:image/webp;base64,';
+const PHOTO_THUMB_PREFIXES = [
+  'data:image/webp;base64,',
+  'data:image/jpeg;base64,',
+] as const;
 
 const PipelineEntrySchema = z.object({
   ts: z.number(),
@@ -78,7 +84,10 @@ const SaveSchema = z.object({
   photoThumb: z
     .string()
     .max(PHOTO_THUMB_MAX_LENGTH)
-    .refine((v) => v.startsWith(PHOTO_THUMB_PREFIX), 'photoThumb moet een WebP-data-URL zijn')
+    .refine(
+      (v) => PHOTO_THUMB_PREFIXES.some((p) => v.startsWith(p)),
+      'photoThumb moet een WebP- of JPEG-data-URL zijn',
+    )
     .optional(),
   items: z.array(ItemSchema).min(1).max(50),
 });
