@@ -31,7 +31,7 @@ export function DeleteAccountSection() {
       <section className="space-y-2" aria-label="Account verwijderen">
         <h2 className="text-base font-semibold text-danger">Account verwijderen</h2>
         <p className="text-sm text-ink-muted">
-          Je hebt nog geen wachtwoord ingesteld. Stel er eerst één in via "Wachtwoord vergeten" — die
+          Je hebt nog geen wachtwoord ingesteld. Stel er eerst één in via &quot;Wachtwoord vergeten&quot; — die
           stap voorkomt dat een gestolen sessie je account stilletjes kan verwijderen.
         </p>
       </section>

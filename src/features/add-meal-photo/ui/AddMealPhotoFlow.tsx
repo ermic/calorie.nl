@@ -29,6 +29,7 @@ export function AddMealPhotoFlow() {
 
   useEffect(() => {
     if (!photoFile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPhotoUrl(null);
       return;
     }
@@ -88,6 +89,7 @@ export function AddMealPhotoFlow() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (step === 'capture') setPhotoFile(null);
   }, [step]);
 

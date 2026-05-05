@@ -32,13 +32,13 @@ export default function DisclaimerPage() {
           <h2 className="font-semibold">Je API-key blijft op je apparaat</h2>
           <p className="text-ink-muted">
             De Gemini API-key die je invult voor foto-analyse wordt nooit op onze server
-            opgeslagen. We bewaren 'm uitsluitend lokaal in de browser (localStorage) en
-            sturen 'm rechtstreeks vanaf je apparaat naar Google. Daardoor zien wij je key
-            niet en kunnen 'm dus ook niet kwijtraken bij een datalek.
+            opgeslagen. We bewaren &apos;m uitsluitend lokaal in de browser (localStorage) en
+            sturen &apos;m rechtstreeks vanaf je apparaat naar Google. Daardoor zien wij je key
+            niet en kunnen &apos;m dus ook niet kwijtraken bij een datalek.
           </p>
           <p className="text-ink-muted">
             Gevolg: log je in op een ander apparaat of in een andere browser, dan moet je
-            de API-key daar opnieuw invullen. Wis je je browsergegevens, dan ben je 'm ook
+            de API-key daar opnieuw invullen. Wis je je browsergegevens, dan ben je &apos;m ook
             kwijt — een nieuwe key haal je gratis op{' '}
             <a
               href="https://aistudio.google.com/apikey"
