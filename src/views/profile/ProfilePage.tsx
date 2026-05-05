@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { AppHeader } from '@/widgets/app-shell';
 import { Card } from '@/shared/ui';
 import { ChangeEmailForm, ChangePasswordForm, LogoutButton } from '@/features/auth';
@@ -52,6 +53,12 @@ export async function ProfilePage() {
         <div className="flex justify-center pt-2">
           <LogoutButton />
         </div>
+
+        <p className="text-center text-xs text-ink-muted">
+          <Link href="/disclaimer" className="hover:underline">
+            Disclaimer
+          </Link>
+        </p>
       </main>
     </>
   );

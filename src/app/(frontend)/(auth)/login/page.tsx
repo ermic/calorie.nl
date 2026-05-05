@@ -83,17 +83,46 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   if (user && !flag) redirect('/');
 
   return (
-    <Card className="w-full max-w-sm">
-      {flag && <Banner flag={flag} />}
-      {user ? (
-        <p className="text-sm text-ink-muted">
-          <Link href="/" className="text-primary-600 hover:underline">
-            Doorgaan naar dashboard
-          </Link>
-        </p>
-      ) : (
-        <LoginForm />
+    <div className="w-full max-w-sm space-y-4">
+      {!user && (
+        <h1 className="text-2xl font-semibold text-ink text-center">calorietje.nl</h1>
       )}
-    </Card>
+      {!user && (
+        <Card padded className="text-sm text-ink-muted leading-relaxed">
+          <p>
+            Track je calorieën met behulp van AI, via een foto van je maaltijd of handmatig.
+            Even een eigen API-key regelen op{' '}
+            <a
+              href="https://aistudio.google.com/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary-600 hover:underline"
+            >
+              aistudio.google.com
+            </a>{' '}
+            (gratis), en je kunt los. De app is beta, dus de AI schat slim maar zit er soms
+            naast. Tip: een vork of lepel naast je bord, of zet je maaltijd op de weegschaal
+            voor een betere schatting.
+          </p>
+        </Card>
+      )}
+      <Card>
+        {flag && <Banner flag={flag} />}
+        {user ? (
+          <p className="text-sm text-ink-muted">
+            <Link href="/" className="text-primary-600 hover:underline">
+              Doorgaan naar dashboard
+            </Link>
+          </p>
+        ) : (
+          <LoginForm />
+        )}
+      </Card>
+      <p className="text-center text-xs text-ink-muted">
+        <Link href="/disclaimer" className="hover:underline">
+          Disclaimer
+        </Link>
+      </p>
+    </div>
   );
 }
