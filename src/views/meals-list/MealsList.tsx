@@ -128,7 +128,6 @@ export function MealsList({ initialPage, timezone }: MealsListProps) {
                   href={`/meals/${meal.id}`}
                   totals={meal.totals}
                   timezone={tz}
-                  className="min-w-0"
                 />
               </li>
             ))}

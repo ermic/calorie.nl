@@ -67,7 +67,7 @@ export async function RecentMeals({ user, limit = 8 }: { user: User; limit?: num
           const mealItems = itemsByMeal.get(meal.id) ?? [];
           const totals = sumMealItems(mealItems);
           return (
-            <li key={meal.id} className="snap-start list-none">
+            <li key={meal.id} className="snap-start list-none w-[260px] flex-shrink-0">
               <MealCard
                 meal={meal}
                 href={`/meals/${meal.id}`}
