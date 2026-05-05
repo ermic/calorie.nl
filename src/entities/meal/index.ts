@@ -20,3 +20,4 @@ export { MealPhotoThumb, type MealPhotoThumbProps } from './ui/MealPhotoThumb';
 export { MealRatingPicker, type MealRating, type MealRatingPickerProps } from './ui/MealRatingPicker';
 export { MealTypeBadge, type MealTypeBadgeProps } from './ui/MealTypeBadge';
 export { useSaveMeal, type SaveMealInput, type SaveMealResponse } from './api/useSaveMeal';
+export { useNevoLookup, type NevoLookupInput } from './api/useNevoLookup';

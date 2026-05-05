@@ -18,19 +18,37 @@ const initialState: AddMealManualState = {
 function scaleFromHit(hit: FoodSearchHit, grams: number): EditableMealItem {
   const factor = Math.max(0, grams) / 100;
   const nonNeg = (n: number) => Math.max(0, Math.round(n * factor));
+  // 'nevo'-hits dragen een nevo_code in `id` en hebben hun macro's al
+  // ingevuld door FoodSearch (post-lookup). We bewaren ze als
+  // nevoPer100g zodat MealItemEditor lineair kan herschalen en de
+  // RotateCcw-knop terug kan naar deze NEVO-baseline.
+  const isNevo = hit.source === 'nevo' && hit.id != null;
+  const displayName = hit.brand ? `${hit.brand} · ${hit.name}` : hit.name;
   const snapshot = {
-    name: hit.brand ? `${hit.brand} · ${hit.name}` : hit.name,
+    name: displayName,
     quantity: Math.max(0, grams),
     unit: 'g',
     calories: nonNeg(hit.caloriesPer100),
     protein: nonNeg(hit.proteinPer100),
     carbs: nonNeg(hit.carbsPer100),
     fat: nonNeg(hit.fatPer100),
+    ...(isNevo ? { nevoCode: hit.id! } : {}),
   };
   return {
     clientId: nanoid(),
     ...snapshot,
     original: snapshot,
+    ...(isNevo
+      ? {
+          nevoCode: hit.id!,
+          nevoPer100g: {
+            calories: Math.max(0, hit.caloriesPer100),
+            protein: Math.max(0, hit.proteinPer100),
+            carbs: Math.max(0, hit.carbsPer100),
+            fat: Math.max(0, hit.fatPer100),
+          },
+        }
+      : {}),
   };
 }
 

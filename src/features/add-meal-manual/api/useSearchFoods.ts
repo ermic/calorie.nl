@@ -4,7 +4,11 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { apiFetch } from '@/shared/lib/api';
 import type { FoodSearchHit } from '@/entities/food';
 
-type SearchResponse = { results: FoodSearchHit[]; offAvailable: boolean };
+type SearchResponse = {
+  results: FoodSearchHit[];
+  offAvailable: boolean;
+  nevoAvailable: boolean;
+};
 
 export function useSearchFoods(query: string) {
   const q = query.trim();
