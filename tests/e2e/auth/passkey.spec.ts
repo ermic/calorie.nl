@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { TEST_USERS } from '../setup/users';
 import { authHeaders, loginApi } from '../setup/login-helper';
 
 // Basis-API-coverage. Full register → login flow vereist Chrome DevTools
