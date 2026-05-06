@@ -23,7 +23,7 @@
   --color-surface: #ffffff;
   --color-surface-muted: #faf7f2;
   --color-ink: #1c1917;
-  --color-ink-muted: #78716c;
+  --color-ink-muted: #312a25;
 
   /* Radius / shadow */
   --radius-card: 1rem;
@@ -55,5 +55,23 @@
   :focus-visible {
     outline: 2px solid var(--color-primary-500);
     outline-offset: 2px;
+  }
+}
+
+@keyframes landing-stripe-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes landing-stripe-draw-reverse {
+  from {
+    stroke-dashoffset: -1;
+  }
+  to {
+    stroke-dashoffset: 0;
   }
 }

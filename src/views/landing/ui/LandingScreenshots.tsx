@@ -38,9 +38,10 @@ export function LandingScreenshots() {
     <section
       className="relative px-6 py-12 sm:py-16"
       style={{
-        backgroundColor: 'rgb(232 141 44)',
+        backgroundColor: 'rgba(255, 255, 255, 0.16)',
+        backdropFilter: 'blur(12px)',
         backgroundImage:
-          'radial-gradient(at center top, rgb(255 255 255) 0%, rgb(255 227 204) 45%, rgb(255 255 255) 100%)',
+          'radial-gradient(at center top, rgba(255, 255, 255, 0) 0%, rgb(255 227 204 / 0.5) 45%, rgba(255, 255, 255, 0.39) 100%)',
         boxShadow:
           'inset 0 12px 28px -8px rgba(120, 30, 30, 0.18), inset 0 -12px 28px -8px rgba(120, 30, 30, 0.12)',
       }}

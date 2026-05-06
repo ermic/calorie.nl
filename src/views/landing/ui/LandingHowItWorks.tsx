@@ -18,7 +18,9 @@ const STEPS = [
 
 export function LandingHowItWorks() {
   return (
-    <section className="bg-ink/[0.03] px-6 py-12 sm:py-16">
+    <section
+      className="bg-ink/[0.03] px-6 py-12 sm:py-16"
+    >
       <div className="mx-auto max-w-5xl">
         <h2 className="text-center text-2xl font-semibold text-ink sm:text-3xl">
           Zo werkt het
@@ -30,7 +32,7 @@ export function LandingHowItWorks() {
           {STEPS.map(({ number, title, body }) => (
             <li
               key={number}
-              className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm"
+              className="rounded-2xl bg-white/60 p-6 shadow-sm backdrop-blur-sm"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-600 text-base font-semibold text-white">
                 {number}

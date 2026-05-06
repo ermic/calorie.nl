@@ -17,7 +17,7 @@ const FEATURES = [
     icon: ShieldCheck,
     title: 'Je API-key blijft van jou',
     body:
-      'De Gemini-key staat lokaal in je browser, nooit op onze server. Wij zien je key niet, en kunnen ’m dus ook niet kwijtraken bij een datalek.',
+      'De Gemini-key staat lokaal in je browser, nooit op onze server. Wij zien je key niet, en kunnen ’m dus ook niet kwijtraken :)',
   },
   {
     icon: Smartphone,
@@ -41,7 +41,7 @@ export function LandingFeatures() {
           {FEATURES.map(({ icon: Icon, title, body }) => (
             <div
               key={title}
-              className="rounded-2xl border border-ink/10 bg-white/60 p-6 shadow-sm backdrop-blur-sm"
+              className="rounded-2xl bg-white/60 p-6 shadow-sm backdrop-blur-sm"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-primary-600">
                 <Icon className="h-5 w-5" aria-hidden />
