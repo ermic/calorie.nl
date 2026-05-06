@@ -1,23 +1,28 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Card } from '@/shared/ui';
+import { BackLink } from './BackLink';
 
 export const metadata: Metadata = {
-  title: 'Disclaimer — calorietje.nl',
+  title: 'Disclaimer',
   description: 'Hoe calorietje.nl met je gegevens en API-key omgaat.',
+  alternates: { canonical: '/disclaimer' },
 };
+
+const NOISE_SVG =
+  "url(\"data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E\")";
 
 export default function DisclaimerPage() {
   return (
-    <main className="min-h-dvh px-4 py-8 mx-auto w-full max-w-2xl space-y-5">
-      <div className="space-y-1">
+    <main className="min-h-dvh py-8 space-y-8">
+      <div className="mx-auto w-full max-w-2xl px-4 space-y-1">
         <h1 className="text-2xl font-semibold text-ink">Disclaimer</h1>
         <p className="text-sm text-ink-muted">
           Hoe calorietje.nl met je gegevens en API-key omgaat.
         </p>
       </div>
 
-      <Card padded className="space-y-4 text-sm leading-relaxed text-ink">
+      <div className="mx-auto w-full max-w-2xl px-4">
+        <Card padded className="space-y-4 text-sm leading-relaxed text-ink">
         <section className="space-y-1">
           <h2 className="font-semibold">Schattingen, geen medisch advies</h2>
           <p className="text-ink-muted">
@@ -83,12 +88,60 @@ export default function DisclaimerPage() {
             .
           </p>
         </section>
-      </Card>
+        </Card>
+      </div>
+
+      <section
+        className="relative overflow-hidden px-6 py-10 sm:py-12"
+        style={{
+          backgroundColor: 'rgb(232 141 44)',
+          backgroundImage:
+            'radial-gradient(at center top, rgb(255 255 255) 0%, rgb(255 227 204) 45%, rgb(255 255 255) 100%)',
+          boxShadow:
+            'inset 0 12px 28px -8px rgba(120, 30, 30, 0.18), inset 0 -12px 28px -8px rgba(120, 30, 30, 0.12)',
+        }}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-40 mix-blend-multiply"
+          style={{ backgroundImage: NOISE_SVG }}
+        />
+        <div className="relative mx-auto max-w-xl text-center">
+          <h2 className="text-2xl font-semibold text-ink sm:text-3xl">
+            Steun calorietje.nl
+          </h2>
+          <p className="mx-auto mt-3 text-sm leading-relaxed text-ink-muted sm:text-base">
+            Calorietje.nl is gratis en draait op een hobby-budget. Wil je het project
+            ondersteunen? Een kleine bijdrage helpt om de servers te blijven betalen.
+          </p>
+          <p className="mx-auto mt-3 text-sm leading-relaxed text-ink-muted sm:text-base">
+            Doneer je <strong className="font-semibold text-ink">€10 of meer</strong>, dan
+            regel ik een API-key voor je, zodat je geen eigen Gemini-key meer hoeft op te
+            geven. Stuur na de donatie even een mailtje naar{' '}
+            <a
+              href="mailto:calorietje@erikie.nl"
+              className="text-primary-600 hover:underline"
+            >
+              calorietje@erikie.nl
+            </a>{' '}
+            met het account-e-mailadres waarop je de key wilt ontvangen. Je hebt dan
+            genoeg credits tot circa 2500 foto-analyses.
+          </p>
+          <div className="mt-6">
+            <a
+              href="https://paypal.me/calorietje"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 items-center justify-center rounded-full bg-primary-600 px-5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-700"
+            >
+              Doneer via PayPal
+            </a>
+          </div>
+        </div>
+      </section>
 
       <div className="flex justify-center pt-2">
-        <Link href="/login" className="text-sm text-primary-600 hover:underline">
-          Terug naar login
-        </Link>
+        <BackLink />
       </div>
     </main>
   );

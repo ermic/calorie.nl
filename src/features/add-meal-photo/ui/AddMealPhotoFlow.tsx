@@ -125,7 +125,7 @@ export function AddMealPhotoFlow() {
         onSuccess: () => {
           dispatch(pushToast({ type: 'success', message: 'Maaltijd opgeslagen' }));
           dispatch(wizardReset());
-          router.push('/');
+          router.push('/dashboard');
         },
       },
     );

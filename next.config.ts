@@ -20,7 +20,10 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'images.openfoodfacts.org' },
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
     ],
-    localPatterns: [{ pathname: '/api/media/file/**' }],
+    localPatterns: [
+      { pathname: '/api/media/file/**' },
+      { pathname: '/landing/**' },
+    ],
   },
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {

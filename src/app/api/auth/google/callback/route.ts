@@ -9,6 +9,7 @@ import {
   linkProviderToUser,
   resolveOrCreateUserForProvider,
 } from '@/shared/lib/account-linking';
+import { RETURNING_USER_COOKIE, RETURNING_USER_MAX_AGE } from '@/shared/lib/returning-user';
 import type { User } from '@/payload-types';
 
 export const runtime = 'nodejs';
@@ -26,8 +27,8 @@ const GOOGLE_JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
 
 function safeRedirectTo(raw: string | null | undefined): string {
-  if (!raw) return '/';
-  if (!raw.startsWith('/') || raw.startsWith('//')) return '/';
+  if (!raw) return '/dashboard';
+  if (!raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
   return raw;
 }
 
@@ -190,6 +191,16 @@ export async function GET(req: NextRequest) {
     payload.logger.error({ err, userId: user.id }, 'google oauth issueSession failed');
     return NextResponse.redirect(`${base}/login?error=oauth_provider_error`, 303);
   }
+
+  // Markeer dat deze browser ooit succesvol heeft ingelogd, zodat een
+  // volgend bezoek aan '/' de marketing-landing overslaat. Niet kritisch:
+  // bij een gefaalde set ziet user volgende keer alleen de landing weer.
+  response.cookies.set(RETURNING_USER_COOKIE, '1', {
+    maxAge: RETURNING_USER_MAX_AGE,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+  });
 
   return response;
 }

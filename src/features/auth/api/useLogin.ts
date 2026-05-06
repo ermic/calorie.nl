@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/shared/lib/api';
+import { markReturningUser } from '@/shared/lib/mark-returning-user';
 import type { LoginInput } from '@/shared/lib/schemas';
 import type { User } from '@/payload-types';
 import { CURRENT_USER_QUERY_KEY } from './useCurrentUser';
@@ -24,10 +25,11 @@ export function useLogin() {
         method: 'POST',
         body: { email: input.email, password: input.password },
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.setQueryData(CURRENT_USER_QUERY_KEY, { user: data.user });
+      await markReturningUser();
       const rawRedirect = searchParams?.get('redirectTo');
-      const redirectTo = rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
+      const redirectTo = rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/dashboard';
       router.push(redirectTo);
       router.refresh();
     },

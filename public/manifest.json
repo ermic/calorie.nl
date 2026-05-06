@@ -2,7 +2,7 @@
   "name": "Calorie Tracker",
   "short_name": "Calories",
   "description": "Houd je dagelijkse calorieën bij, ook met AI foto-herkenning",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ec8a2e",

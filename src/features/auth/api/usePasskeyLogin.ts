@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { startAuthentication } from '@simplewebauthn/browser';
 import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 import { apiFetch } from '@/shared/lib/api';
+import { markReturningUser } from '@/shared/lib/mark-returning-user';
 import type { User } from '@/payload-types';
 import { CURRENT_USER_QUERY_KEY } from './useCurrentUser';
 
@@ -27,13 +28,14 @@ export function usePasskeyLogin() {
         body: { response: assertion },
       });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.setQueryData(CURRENT_USER_QUERY_KEY, { user: data.user });
+      await markReturningUser();
       const rawRedirect = searchParams?.get('redirectTo');
       const redirectTo =
         rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
           ? rawRedirect
-          : '/';
+          : '/dashboard';
       router.push(redirectTo);
       router.refresh();
     },

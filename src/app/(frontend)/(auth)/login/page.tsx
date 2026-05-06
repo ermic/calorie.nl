@@ -1,8 +1,23 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Card } from '@/shared/ui';
 import { LoginForm } from '@/features/auth';
 import { getCurrentUser } from '@/shared/lib/auth-guard';
+
+export const metadata: Metadata = {
+  title: 'Inloggen',
+  description:
+    'Log in op Calorietje en track je calorieën met AI foto-herkenning of handmatig via de Nederlandse NEVO-database.',
+  alternates: { canonical: '/login' },
+  openGraph: {
+    title: 'Calorietje — calorieën tellen met AI foto-herkenning',
+    description:
+      'Track je calorieën via een foto van je maaltijd of handmatig met de NEVO-database. Gratis te gebruiken met je eigen Gemini API-key.',
+    url: '/login',
+    type: 'website',
+  },
+};
 
 type LoginSearchParams = {
   verified?: string;
@@ -80,37 +95,18 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   // (klik op een verify-/email-change-link in zelfde browser) tonen we
   // de banner zodat ze acknowledgement zien en zelf doorklikken.
   const user = await getCurrentUser();
-  if (user && !flag) redirect('/');
+  if (user && !flag) redirect('/dashboard');
 
   return (
     <div className="w-full max-w-sm space-y-4">
       {!user && (
         <h1 className="text-2xl font-semibold text-ink text-center">calorietje.nl</h1>
       )}
-      {!user && (
-        <Card padded className="text-sm text-ink-muted leading-relaxed">
-          <p>
-            Track je calorieën met behulp van AI, via een foto van je maaltijd of handmatig.
-            Even een eigen API-key regelen op{' '}
-            <a
-              href="https://aistudio.google.com/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-600 hover:underline"
-            >
-              aistudio.google.com
-            </a>{' '}
-            (gratis), en je kunt los. De app is beta, dus de AI schat slim maar zit er soms
-            naast. Tip: een vork of lepel naast je bord, of zet je maaltijd op de weegschaal
-            voor een betere schatting.
-          </p>
-        </Card>
-      )}
       <Card>
         {flag && <Banner flag={flag} />}
         {user ? (
           <p className="text-sm text-ink-muted">
-            <Link href="/" className="text-primary-600 hover:underline">
+            <Link href="/dashboard" className="text-primary-600 hover:underline">
               Doorgaan naar dashboard
             </Link>
           </p>
@@ -118,7 +114,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <LoginForm />
         )}
       </Card>
-      <p className="text-center text-xs text-ink-muted">
+      <p className="text-center text-xs text-ink-muted space-x-3">
+        <Link href="/?over=1" className="hover:underline">
+          Over Calorietje
+        </Link>
+        <span aria-hidden>·</span>
         <Link href="/disclaimer" className="hover:underline">
           Disclaimer
         </Link>

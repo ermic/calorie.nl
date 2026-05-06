@@ -10,8 +10,8 @@ export const runtime = 'nodejs';
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 function safeRedirectTo(raw: string | null): string {
-  if (!raw) return '/';
-  if (!raw.startsWith('/') || raw.startsWith('//')) return '/';
+  if (!raw) return '/dashboard';
+  if (!raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
   return raw;
 }
 
