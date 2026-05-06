@@ -19,6 +19,24 @@ export const metadata: Metadata = {
   },
 };
 
+const APP_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'Calorietje',
+  url: 'https://calorietje.nl/',
+  description:
+    'Calorieën tellen via een foto van je maaltijd of handmatig met de Nederlandse NEVO-database.',
+  applicationCategory: 'HealthApplication',
+  operatingSystem: 'Web',
+  inLanguage: 'nl-NL',
+  isAccessibleForFree: true,
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'EUR',
+  },
+};
+
 type LoginSearchParams = {
   verified?: string;
   email_changed?: string;
@@ -99,6 +117,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <div className="w-full max-w-sm space-y-4">
+      {!user && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(APP_JSON_LD) }}
+        />
+      )}
       {!user && (
         <h1 className="text-2xl font-semibold text-ink text-center">calorietje.nl</h1>
       )}
