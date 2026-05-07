@@ -1,10 +1,11 @@
-import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
+// Demo stub — productie-implementatie weggelaten uit de publieke demo.
+//
+// In de echte codebase richt dit bestand een Gemini-client in vanuit een
+// browser-side API-key en stelt de generation-config voor vision-prompts in.
 
-// Browser-side: de API key komt uit de user's localStorage (zie
-// shared/lib/gemini-key-storage). De sleutel raakt onze server nooit
-// aan — Gemini wordt direct vanuit de browser aangeroepen.
+import type { GenerativeModel } from '@google/generative-ai';
 
-export const GEMINI_VISION_MODEL = 'gemini-3.1-flash-lite-preview';
+export const GEMINI_VISION_MODEL = 'gemini-vision-stub';
 
 export type GeminiModelName = string;
 
@@ -13,19 +14,6 @@ export type ActiveVisionModel = {
   client: GenerativeModel;
 };
 
-export function getVisionModel(apiKey: string): ActiveVisionModel {
-  const trimmed = apiKey.trim();
-  if (!trimmed) {
-    throw new Error('GEMINI_API_KEY_MISSING');
-  }
-  const overrideModel = process.env.NEXT_PUBLIC_GEMINI_VISION_MODEL;
-  const name = overrideModel || GEMINI_VISION_MODEL;
-  const client = new GoogleGenerativeAI(trimmed).getGenerativeModel({
-    model: name,
-    generationConfig: {
-      temperature: 0.2,
-      responseMimeType: 'application/json',
-    },
-  });
-  return { name, client };
+export function getVisionModel(_apiKey: string): ActiveVisionModel {
+  throw new Error('demo: gemini integration is not included in the public demo');
 }

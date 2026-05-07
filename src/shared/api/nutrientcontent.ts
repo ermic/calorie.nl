@@ -1,11 +1,7 @@
+// Demo stub — interne nutrientcontent-microservice weggelaten uit de
+// publieke demo. Types zijn behouden zodat consumers blijven type-checken.
+
 import 'server-only';
-
-const BASE = process.env.NUTRIENTCONTENT_BASE_URL ?? 'http://127.0.0.1:5555';
-const KEY = process.env.NUTRIENTCONTENT_API_KEY ?? '';
-
-if (!KEY && process.env.NODE_ENV === 'production') {
-  throw new Error('NUTRIENTCONTENT_API_KEY missing');
-}
 
 export class NutrientContentError extends Error {
   constructor(
@@ -73,148 +69,32 @@ export type CalcItemOut = {
 
 export type CalcResponse = { totals: CalcTotals; items: CalcItemOut[] };
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(new URL(path, BASE), {
-    ...init,
-    headers: {
-      'X-API-Key': KEY,
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init.headers ?? {}),
-    },
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    let bodyText = '';
-    try {
-      bodyText = await res.text();
-    } catch {
-      // empty body
-    }
-    throw new NutrientContentError(
-      `nutrientcontent ${path} -> ${res.status}${bodyText ? `: ${bodyText.slice(0, 200)}` : ''}`,
-      res.status,
-    );
-  }
-  return res.json() as Promise<T>;
+const DEMO_ERR = 'demo: nutrientcontent microservice is not included in the public demo';
+
+export async function searchFoods(): Promise<SearchHit[]> {
+  throw new NutrientContentError(DEMO_ERR, 501);
 }
 
-export async function searchFoods(
-  q: string,
-  opts?: { lang?: 'nl' | 'en'; limit?: number; signal?: AbortSignal },
-): Promise<SearchHit[]> {
-  const url = new URL('/foods', BASE);
-  url.searchParams.set('q', q);
-  url.searchParams.set('lang', opts?.lang ?? 'nl');
-  url.searchParams.set('limit', String(opts?.limit ?? 5));
-  const json = await request<{ query: string; results: SearchHit[] }>(
-    `/foods?${url.searchParams.toString()}`,
-    { signal: opts?.signal },
-  );
-  return json.results;
+export async function fetchFoodDetail(): Promise<FoodDetail> {
+  throw new NutrientContentError(DEMO_ERR, 501);
 }
 
-export async function fetchFoodDetail(nevoCode: number, opts?: { signal?: AbortSignal }): Promise<FoodDetail> {
-  return request<FoodDetail>(`/foods/${nevoCode}`, { signal: opts?.signal });
+export async function searchFoodsByVector(): Promise<VectorHit[]> {
+  throw new NutrientContentError(DEMO_ERR, 501);
 }
 
-export async function searchFoodsByVector(
-  q: string,
-  opts?: { limit?: number; minSimilarity?: number; signal?: AbortSignal },
-): Promise<VectorHit[]> {
-  const params = new URLSearchParams();
-  params.set('q', q);
-  params.set('limit', String(opts?.limit ?? 5));
-  params.set('min_similarity', String(opts?.minSimilarity ?? 0));
-  const json = await request<{ query: string; results: VectorHit[] }>(
-    `/foods/vector?${params.toString()}`,
-    { signal: opts?.signal },
-  );
-  return json.results;
+export async function calculate(): Promise<CalcResponse> {
+  throw new NutrientContentError(DEMO_ERR, 501);
 }
 
-export async function calculate(
-  items: CalcRequestItem[],
-  opts?: { signal?: AbortSignal },
-): Promise<CalcResponse> {
-  return request<CalcResponse>('/calculate', {
-    method: 'POST',
-    body: JSON.stringify({ items }),
-    signal: opts?.signal,
-  });
+export async function searchFoodsCached(): Promise<SearchHit[]> {
+  throw new NutrientContentError(DEMO_ERR, 501);
 }
 
-// In-process LRU. Voorkomt dat dezelfde "kipfilet" of nevo_code voor elke
-// foto opnieuw de microservice raakt. Niet thread-safe over workers, maar
-// dev/prod draait Next op één node-proces per host.
-type CacheEntry<T> = { value: T; expiresAt: number };
-
-class TtlCache<T> {
-  private map = new Map<string, CacheEntry<T>>();
-  constructor(
-    private maxEntries: number,
-    private ttlMs: number,
-  ) {}
-
-  get(key: string): T | undefined {
-    const entry = this.map.get(key);
-    if (!entry) return undefined;
-    if (entry.expiresAt < Date.now()) {
-      this.map.delete(key);
-      return undefined;
-    }
-    // Move-to-front voor LRU.
-    this.map.delete(key);
-    this.map.set(key, entry);
-    return entry.value;
-  }
-
-  set(key: string, value: T) {
-    if (this.map.has(key)) this.map.delete(key);
-    else if (this.map.size >= this.maxEntries) {
-      const oldest = this.map.keys().next().value;
-      if (oldest !== undefined) this.map.delete(oldest);
-    }
-    this.map.set(key, { value, expiresAt: Date.now() + this.ttlMs });
-  }
+export async function searchFoodsByVectorCached(): Promise<VectorHit[]> {
+  throw new NutrientContentError(DEMO_ERR, 501);
 }
 
-const SEARCH_CACHE = new TtlCache<SearchHit[]>(200, 10 * 60_000);
-const DETAIL_CACHE = new TtlCache<FoodDetail>(200, 10 * 60_000);
-const VECTOR_CACHE = new TtlCache<VectorHit[]>(200, 10 * 60_000);
-
-export async function searchFoodsCached(
-  q: string,
-  opts?: { lang?: 'nl' | 'en'; limit?: number },
-): Promise<SearchHit[]> {
-  const lang = opts?.lang ?? 'nl';
-  const limit = opts?.limit ?? 10;
-  const key = `${lang}:${limit}:${q.toLowerCase()}`;
-  const cached = SEARCH_CACHE.get(key);
-  if (cached) return cached;
-  const fresh = await searchFoods(q, { lang, limit });
-  SEARCH_CACHE.set(key, fresh);
-  return fresh;
-}
-
-export async function searchFoodsByVectorCached(
-  q: string,
-  opts?: { limit?: number; minSimilarity?: number },
-): Promise<VectorHit[]> {
-  const limit = opts?.limit ?? 5;
-  const minSim = opts?.minSimilarity ?? 0;
-  const key = `${limit}:${minSim}:${q.toLowerCase()}`;
-  const cached = VECTOR_CACHE.get(key);
-  if (cached) return cached;
-  const fresh = await searchFoodsByVector(q, { limit, minSimilarity: minSim });
-  VECTOR_CACHE.set(key, fresh);
-  return fresh;
-}
-
-export async function fetchFoodDetailCached(nevoCode: number): Promise<FoodDetail> {
-  const key = String(nevoCode);
-  const cached = DETAIL_CACHE.get(key);
-  if (cached) return cached;
-  const fresh = await fetchFoodDetail(nevoCode);
-  DETAIL_CACHE.set(key, fresh);
-  return fresh;
+export async function fetchFoodDetailCached(): Promise<FoodDetail> {
+  throw new NutrientContentError(DEMO_ERR, 501);
 }
