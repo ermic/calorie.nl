@@ -1,0 +1,10 @@
+reviews:
+  path_filters:
+    - "src/**"
+    - "!src/app/(payload)/**"
+  path_instructions:
+    - path: "src/**"
+      instructions: "Review this source directory thoroughly."
+  pre_merge_checks:
+    docstrings:
+      mode: off
