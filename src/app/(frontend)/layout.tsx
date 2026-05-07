@@ -10,19 +10,22 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 const SITE_NAME = 'Calorietje';
 const SITE_DESCRIPTION =
   'Calorieën tellen via een foto van je maaltijd of handmatig met de Nederlandse NEVO-database. Gratis te gebruiken met je eigen Gemini API-key.';
-const PROD_HOST = 'calorietje.nl';
+// Canonieke productie-hostnames. Nginx redirect bare naar www, maar de
+// Next.js-app kan via NEXT_PUBLIC_SERVER_URL beide vormen zien afhankelijk
+// van hoe de env is ingericht. Beide tellen als productie.
+const PROD_HOSTS = ['www.calorietje.nl', 'calorietje.nl'] as const;
+const FALLBACK_SITE_URL = `https://${PROD_HOSTS[0]}`;
 // Een productie-host wordt alleen aangenomen als NEXT_PUBLIC_SERVER_URL
-// expliciet is ingesteld en wijst naar PROD_HOST. Anders (lokaal, staging,
-// of ontbrekende env) is isProd false → noindex blijft aan en JSON-LD blijft
-// uit. De fallback voor siteUrl (https://calorietje.nl) wordt alleen gebruikt
+// expliciet is ingesteld en naar een PROD_HOSTS-entry wijst. Anders
+// (lokaal, staging, of ontbrekende env) is isProd false → noindex blijft
+// aan en JSON-LD blijft uit. De fallback voor siteUrl wordt alleen gebruikt
 // voor metadataBase en canonical-URLs en mag niet leiden tot productie-flag.
-const FALLBACK_SITE_URL = `https://${PROD_HOST}`;
 const configuredSiteUrl = process.env.NEXT_PUBLIC_SERVER_URL?.replace(/\/+$/, '');
 const siteUrl = configuredSiteUrl ?? FALLBACK_SITE_URL;
 const isProd = (() => {
   if (!configuredSiteUrl) return false;
   try {
-    return new URL(configuredSiteUrl).hostname === PROD_HOST;
+    return (PROD_HOSTS as readonly string[]).includes(new URL(configuredSiteUrl).hostname);
   } catch {
     return false;
   }

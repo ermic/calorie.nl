@@ -1,16 +1,19 @@
 import type { MetadataRoute } from 'next';
 
-const PROD_HOST = 'calorietje.nl';
+// Canonieke productie-hostnames — moet synchroon blijven met de lijst in
+// src/app/(frontend)/layout.tsx. Beide vormen tellen als productie zodat
+// robots.txt op www en bare host hetzelfde gedrag vertoont.
+const PROD_HOSTS = ['www.calorietje.nl', 'calorietje.nl'] as const;
 
 function siteUrl(): string {
   const env = process.env.NEXT_PUBLIC_SERVER_URL;
-  if (!env) return `https://${PROD_HOST}`;
+  if (!env) return `https://${PROD_HOSTS[0]}`;
   return env.replace(/\/+$/, '');
 }
 
 function isProd(url: string): boolean {
   try {
-    return new URL(url).hostname === PROD_HOST;
+    return (PROD_HOSTS as readonly string[]).includes(new URL(url).hostname);
   } catch {
     return false;
   }
