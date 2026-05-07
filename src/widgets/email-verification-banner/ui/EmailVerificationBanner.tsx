@@ -35,7 +35,7 @@ export function EmailVerificationBanner() {
       </div>
       {resend.error && (
         <p className="mx-auto mt-1 max-w-3xl text-xs text-danger" role="alert">
-          {resend.error.message}
+          Versturen mislukt. Probeer het later opnieuw.
         </p>
       )}
     </div>

@@ -42,11 +42,17 @@ function isIOSLike(): boolean {
 
 function snoozeActive(): boolean {
   if (typeof window === 'undefined') return true;
-  const raw = window.localStorage.getItem(DISMISS_KEY);
-  if (!raw) return false;
-  const ts = Number(raw);
-  if (!Number.isFinite(ts)) return false;
-  return Date.now() - ts < SNOOZE_MS;
+  try {
+    const raw = window.localStorage.getItem(DISMISS_KEY);
+    if (!raw) return false;
+    const ts = Number(raw);
+    if (!Number.isFinite(ts)) return false;
+    return Date.now() - ts < SNOOZE_MS;
+  } catch {
+    // Private mode / storage disabled — behandel als gesnoozed zodat
+    // we de mount-flow niet breken met een uncaught throw.
+    return true;
+  }
 }
 
 export function InstallPrompt() {

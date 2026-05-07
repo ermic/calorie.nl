@@ -23,7 +23,7 @@ export async function WeeklyTrend({ user }: { user: User }) {
   const tz = user.timezone || DEFAULT_TIMEZONE;
   const now = new Date();
   const todayStart = startOfDayInTimezone(now, tz);
-  const rangeStart = addDaysInTimezone(now, -(DAYS - 1), tz);
+  const rangeStart = startOfDayInTimezone(addDaysInTimezone(now, -(DAYS - 1), tz), tz);
   const rangeEnd = endOfDayInTimezone(now, tz);
 
   const { docs: meals } = await payload.find({

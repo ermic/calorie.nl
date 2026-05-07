@@ -33,7 +33,7 @@ export function BottomNav() {
             className={cn(
               'flex h-12 w-12 items-center justify-center rounded-full',
               'bg-primary-600 text-white shadow-[var(--shadow-card)] hover:bg-primary-700',
-              'focus-visible:outline-none',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-700 focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
             )}
           >
             <Plus size={24} aria-hidden />

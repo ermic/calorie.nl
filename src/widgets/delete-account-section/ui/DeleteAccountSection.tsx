@@ -84,7 +84,7 @@ export function DeleteAccountSection() {
 
       {del.error && (
         <p className="text-sm text-danger" role="alert">
-          {del.error.message}
+          Verwijderen mislukt. Controleer je wachtwoord en probeer het opnieuw.
         </p>
       )}
 
