@@ -25,7 +25,10 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const q = (url.searchParams.get('q') ?? '').trim();
   const requestedLimit = Number(url.searchParams.get('limit') ?? '10');
-  const limit = Math.min(MAX_LIMIT, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 10));
+  const limit = Math.min(
+    MAX_LIMIT,
+    Math.max(1, Number.isFinite(requestedLimit) ? Math.floor(requestedLimit) : 10),
+  );
 
   if (q.length < MIN_QUERY || q.length > MAX_QUERY) {
     return NextResponse.json<FoodSearchResponse>({
@@ -116,7 +119,7 @@ export async function GET(req: NextRequest) {
     for (const p of off.products) {
       if (!p.code || seenBarcodes.has(p.code)) continue;
       const n = normalizeOFFProduct(p);
-      if (!n.caloriesPer100 && !n.proteinPer100 && !n.carbsPer100 && !n.fatPer100) continue;
+      if (!n.hasNutrition) continue;
       results.push({
         source: 'off',
         id: null,

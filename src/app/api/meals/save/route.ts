@@ -148,6 +148,7 @@ async function upsertFoodsFromItems(
     limit: candidates.size * 5,
     depth: 0,
     pagination: false,
+    overrideAccess: false,
     req: txReq,
   });
   const existingNamesLowered = new Set(
@@ -168,6 +169,7 @@ async function upsertFoodsFromItems(
       payload.create({
         collection: 'foods',
         data: { ...food, source: 'USER' },
+        overrideAccess: false,
         req: txReq,
       }),
     ),

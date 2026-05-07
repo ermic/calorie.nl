@@ -94,6 +94,10 @@ export async function GET(req: NextRequest) {
     overrideAccess: true,
   });
 
+  if (new Date(challenge.expiresAt) < new Date()) {
+    return NextResponse.redirect(`${base}/login?error=oauth_state_expired`, 303);
+  }
+
   let claims: GoogleIdTokenClaims;
   try {
     const google = new Google(clientId, clientSecret, redirectUri);

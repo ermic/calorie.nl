@@ -58,6 +58,14 @@ export async function searchProducts(query: string, pageSize = 20): Promise<OFFS
 
 export function normalizeOFFProduct(p: OFFProduct) {
   const n = p.nutriments ?? {};
+  // Onderscheid 'echte 0' (suiker = 0 g) vs 'ontbrekend' — anders zou
+  // de search-route een feitelijk 0g-suikerproduct als 'no nutrition'
+  // skippen. Cliendcode blijft numbers krijgen (default 0).
+  const hasNutrition =
+    n['energy-kcal_100g'] != null ||
+    n.proteins_100g != null ||
+    n.carbohydrates_100g != null ||
+    n.fat_100g != null;
   return {
     barcode: p.code,
     name: p.product_name ?? 'Onbekend product',
@@ -70,5 +78,6 @@ export function normalizeOFFProduct(p: OFFProduct) {
     sugarPer100: n.sugars_100g ?? 0,
     servingSize: p.serving_quantity ?? null,
     servingUnit: p.serving_size ?? null,
+    hasNutrition,
   };
 }

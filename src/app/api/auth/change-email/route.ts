@@ -198,35 +198,29 @@ export async function POST(request: Request) {
     );
   }
 
-  // Cap mail-send op 10s en cleanup tokens bij failure: we willen geen
-  // orphan tokens in DB en geen 30s-hangende request. Bij failure: 502
-  // zodat de UI er duidelijk over kan zijn en de user opnieuw kan
-  // proberen.
+  // Stuur de mails synchroon en cleanup tokens alléén bij een echte
+  // failure van sendEmail. Een lokale Promise.race-timeout zou tokens
+  // kunnen wissen terwijl SMTP later alsnog levert — gevolg: user klikt
+  // op een geldig-uitziende link en krijgt "ongeldig". De SMTP-transport
+  // heeft zelf al een connect/socket-timeout (nodemailer ~60s).
   try {
-    await Promise.race([
-      (async () => {
-        await payload.sendEmail({
-          to: normalizedNew,
-          subject: 'Bevestig je nieuwe e-mailadres — Calorietje',
-          html: changeEmailConfirmEmail({
-            name: user.name ?? null,
-            link: `${baseUrl}/api/auth/confirm-email-change?token=${confirmToken}`,
-          }),
-        });
-        await payload.sendEmail({
-          to: user.email,
-          subject: 'E-mailwijziging aangevraagd — Calorietje',
-          html: changeEmailNoticeEmail({
-            name: user.name ?? null,
-            newEmail: normalizedNew,
-            revokeLink: `${baseUrl}/api/auth/revoke-email-change?token=${revokeToken}`,
-          }),
-        });
-      })(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('SMTP timeout')), 10_000),
-      ),
-    ]);
+    await payload.sendEmail({
+      to: normalizedNew,
+      subject: 'Bevestig je nieuwe e-mailadres — Calorietje',
+      html: changeEmailConfirmEmail({
+        name: user.name ?? null,
+        link: `${baseUrl}/api/auth/confirm-email-change?token=${confirmToken}`,
+      }),
+    });
+    await payload.sendEmail({
+      to: user.email,
+      subject: 'E-mailwijziging aangevraagd — Calorietje',
+      html: changeEmailNoticeEmail({
+        name: user.name ?? null,
+        newEmail: normalizedNew,
+        revokeLink: `${baseUrl}/api/auth/revoke-email-change?token=${revokeToken}`,
+      }),
+    });
   } catch (err) {
     payload.logger.error({ err, userId }, 'change-email mail failed');
     await payload.delete({

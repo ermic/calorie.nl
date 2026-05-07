@@ -55,6 +55,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Ongeldige passkey' }, { status: 400 });
   }
 
+  // Email-bound login (challenge.userId gezet door /options) eist dat
+  // de credential ook bij die user hoort — voorkomt dat een aanvaller
+  // op een eigen passkey kan inloggen op een sessie die voor een
+  // andere user-id was bedoeld.
+  if (challenge.userId && String(challenge.userId) !== String(user.id)) {
+    return NextResponse.json({ error: 'Ongeldige passkey' }, { status: 400 });
+  }
+
   let verification;
   try {
     verification = await verifyAuthenticationResponse({

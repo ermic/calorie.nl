@@ -84,23 +84,28 @@ export async function POST(req: NextRequest) {
     parsed.data.items.map(({ name, state }) => lookupOne(name, state, services)),
   );
 
-  // Logging voor Fase-4 evaluatie: telt per request hoeveel via FTS gingen,
-  // hoeveel via vector zijn 'gered', en hoeveel `null` blijven. Per item
-  // onder `[nevo/match]` met source-tag voor grep-ability in journalctl.
+  // Logging voor Fase-4 evaluatie: tel per request totaal en per source.
+  // We loggen geen rauwe inputName/state/rejectedFtsTop meer — dat zijn
+  // user-gegenereerde dieet-strings (potentiële PII / persoonlijke
+  // eetgewoontes) en horen niet in journalctl te blijven. Aggregaten
+  // zijn voldoende voor de tuning-flow.
+  const sourceCounts: Record<MatchResult['source'], number> = { fts: 0, vector: 0, none: 0 };
+  let matched = 0;
+  let rejectedFts = 0;
   for (const r of results) {
-    console.info(
-      '[nevo/match]',
-      JSON.stringify({
-        input: r.inputName,
-        state: r.state,
-        source: r.source,
-        ...(r.match ? { nevoCode: r.match.nevoCode, name: r.match.nameNl } : {}),
-        ...(r.rejectedFtsTop
-          ? { rejectedFtsTop: r.rejectedFtsTop }
-          : {}),
-      }),
-    );
+    sourceCounts[r.source]++;
+    if (r.match) matched++;
+    if (r.rejectedFtsTop) rejectedFts++;
   }
+  console.info(
+    '[nevo/match]',
+    JSON.stringify({
+      total: results.length,
+      matched,
+      rejectedFts,
+      sources: sourceCounts,
+    }),
+  );
 
   if (serviceFailed && results.every((r) => !r.match)) {
     return NextResponse.json({ error: 'NEVO_UNAVAILABLE' }, { status: 503 });

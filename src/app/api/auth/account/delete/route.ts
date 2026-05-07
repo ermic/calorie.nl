@@ -165,7 +165,7 @@ export async function POST(request: Request) {
       html: accountDeletedEmail({ name: userName ?? null }),
     });
   } catch (err) {
-    payload.logger.error({ err, email: userEmail }, 'account-deleted mail failed');
+    payload.logger.error({ err, userId: user.id }, 'account-deleted mail failed');
   }
 
   return NextResponse.json({ ok: true });

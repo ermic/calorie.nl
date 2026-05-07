@@ -67,26 +67,31 @@ export async function POST(request: Request) {
   const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
 
   const existing = user.passkeyCredentials ?? [];
-  await payload.update({
-    collection: 'users',
-    id: user.id,
-    overrideAccess: true,
-    data: {
-      passkeyCredentials: [
-        ...existing,
-        {
-          credentialId: credential.id,
-          publicKey: Buffer.from(credential.publicKey).toString('base64url'),
-          counter: credential.counter,
-          transports: (credential.transports ?? []) as unknown as Record<string, unknown>,
-          deviceType: credentialDeviceType,
-          backedUp: credentialBackedUp,
-          label: body.label ?? defaultLabel(request),
-          createdAt: new Date().toISOString(),
-        },
-      ],
-    },
-  });
+  // Idempotent: een retry van /verify met dezelfde credentialId mag de
+  // array niet laten groeien met duplicaten. Uniqueness op DB-laag volgt
+  // later — zie FOLLOW_UPS.
+  if (!existing.some((c) => c.credentialId === credential.id)) {
+    await payload.update({
+      collection: 'users',
+      id: user.id,
+      overrideAccess: true,
+      data: {
+        passkeyCredentials: [
+          ...existing,
+          {
+            credentialId: credential.id,
+            publicKey: Buffer.from(credential.publicKey).toString('base64url'),
+            counter: credential.counter,
+            transports: (credential.transports ?? []) as unknown as Record<string, unknown>,
+            deviceType: credentialDeviceType,
+            backedUp: credentialBackedUp,
+            label: body.label ?? defaultLabel(request),
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      },
+    });
+  }
 
   await payload.delete({
     collection: 'loginChallenges',

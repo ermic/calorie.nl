@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const q = (url.searchParams.get('q') ?? '').trim();
   const requested = Number(url.searchParams.get('limit') ?? String(DEFAULT_LIMIT));
-  const limit = Math.min(MAX_LIMIT, Math.max(1, Number.isFinite(requested) ? requested : DEFAULT_LIMIT));
+  const limit = Math.min(
+    MAX_LIMIT,
+    Math.max(1, Number.isFinite(requested) ? Math.floor(requested) : DEFAULT_LIMIT),
+  );
 
   // Buiten bereik = lege response (geen 4xx). Tijdens snel wissen vuurt de
   // typeahead anders rode foutstaten af terwijl er gewoon niets te zoeken is.
@@ -53,9 +56,11 @@ export async function GET(req: NextRequest) {
         minSimilarity: VECTOR_THRESHOLD_TYPEAHEAD,
       });
       if (vec.length) {
+        // Geen rauwe q in de log: typeahead-queries kunnen persoonlijke
+        // eetgewoontes onthullen. Aggregaten + bron-tag zijn genoeg.
         console.info(
           '[nevo/search]',
-          JSON.stringify({ q, source: 'vector', hits: vec.length, top_sim: vec[0].similarity }),
+          JSON.stringify({ source: 'vector', hits: vec.length, top_sim: vec[0].similarity }),
         );
       }
       const results: NevoSuggestion[] = vec.map((v) => ({
@@ -67,7 +72,7 @@ export async function GET(req: NextRequest) {
     } catch (vErr) {
       // Vector down = geen catastrophe; FTS gaf al niks dus we geven
       // gewoon lege resultaten terug. Loggen voor monitoring.
-      console.warn('[nevo/search] vector fallback failed for', q, vErr);
+      console.warn('[nevo/search] vector fallback failed', vErr);
       return NextResponse.json<NevoSearchResponse>({ results: [] });
     }
   } catch (err) {

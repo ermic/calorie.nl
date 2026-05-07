@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
       and: [
         { tokenHash: { equals: tokenHash } },
         { kind: { equals: 'change-confirm' } },
+        { expiresAt: { greater_than: new Date().toISOString() } },
       ],
     },
     limit: 1,

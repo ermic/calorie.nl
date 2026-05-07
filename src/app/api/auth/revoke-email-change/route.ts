@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
       and: [
         { tokenHash: { equals: tokenHash } },
         { kind: { equals: 'change-revoke' } },
+        { expiresAt: { greater_than: new Date().toISOString() } },
       ],
     },
     limit: 1,
@@ -56,11 +57,16 @@ export async function GET(req: NextRequest) {
       overrideAccess: true,
     });
     if (userResult?.email) {
-      await payload.sendEmail({
-        to: userResult.email,
-        subject: 'E-mailwijziging ingetrokken — Calorietje',
-        html: changeEmailRevokedEmail({ name: userResult.name ?? null }),
-      });
+      await Promise.race([
+        payload.sendEmail({
+          to: userResult.email,
+          subject: 'E-mailwijziging ingetrokken — Calorietje',
+          html: changeEmailRevokedEmail({ name: userResult.name ?? null }),
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('SMTP timeout')), 10_000),
+        ),
+      ]);
     }
   } catch (err) {
     payload.logger.error({ err, userId: record.userId }, 'revoke-email-change notify failed');
