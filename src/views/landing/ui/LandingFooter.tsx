@@ -10,11 +10,33 @@ export function LandingFooter() {
             calorietje@erikie.nl
           </a>
         </p>
-        <p>
-          <Link href="/disclaimer" className="hover:underline">
-            Disclaimer
-          </Link>
-        </p>
+        <nav aria-label="Juridisch">
+          <ul className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            <li>
+              <Link href="/about" className="hover:underline">
+                Over dit project
+              </Link>
+            </li>
+            <li aria-hidden="true">·</li>
+            <li>
+              <Link href="/privacy" className="hover:underline">
+                Privacy
+              </Link>
+            </li>
+            <li aria-hidden="true">·</li>
+            <li>
+              <Link href="/terms" className="hover:underline">
+                Voorwaarden
+              </Link>
+            </li>
+            <li aria-hidden="true">·</li>
+            <li>
+              <Link href="/disclaimer" className="hover:underline">
+                Disclaimer
+              </Link>
+            </li>
+          </ul>
+        </nav>
       </div>
     </footer>
   );

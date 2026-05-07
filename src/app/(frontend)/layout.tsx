@@ -11,23 +11,44 @@ const SITE_NAME = 'Calorietje';
 const SITE_DESCRIPTION =
   'Calorieën tellen via een foto van je maaltijd of handmatig met de Nederlandse NEVO-database. Gratis te gebruiken met je eigen Gemini API-key.';
 const PROD_HOST = 'calorietje.nl';
-const siteUrl = (process.env.NEXT_PUBLIC_SERVER_URL ?? `https://${PROD_HOST}`).replace(/\/+$/, '');
+// Een productie-host wordt alleen aangenomen als NEXT_PUBLIC_SERVER_URL
+// expliciet is ingesteld en wijst naar PROD_HOST. Anders (lokaal, staging,
+// of ontbrekende env) is isProd false → noindex blijft aan en JSON-LD blijft
+// uit. De fallback voor siteUrl (https://calorietje.nl) wordt alleen gebruikt
+// voor metadataBase en canonical-URLs en mag niet leiden tot productie-flag.
+const FALLBACK_SITE_URL = `https://${PROD_HOST}`;
+const configuredSiteUrl = process.env.NEXT_PUBLIC_SERVER_URL?.replace(/\/+$/, '');
+const siteUrl = configuredSiteUrl ?? FALLBACK_SITE_URL;
 const isProd = (() => {
+  if (!configuredSiteUrl) return false;
   try {
-    return new URL(siteUrl).hostname === PROD_HOST;
+    return new URL(configuredSiteUrl).hostname === PROD_HOST;
   } catch {
     return false;
   }
 })();
+// Een malformed NEXT_PUBLIC_SERVER_URL mag de build niet laten crashen op
+// `new URL(...)`. Valt-terug op de prod-fallback (die per definitie geldig is)
+// zodat metadataBase altijd een geldig URL-object oplevert.
+const metadataBaseUrl = (() => {
+  try {
+    return new URL(siteUrl);
+  } catch {
+    return new URL(FALLBACK_SITE_URL);
+  }
+})();
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: metadataBaseUrl,
   title: {
     default: `${SITE_NAME} — calorieën tellen met AI foto-herkenning`,
     template: `%s — ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
+  authors: [{ name: 'Erik de Boer', url: 'https://jump.nl' }],
+  creator: 'Erik de Boer',
+  publisher: 'Erik de Boer',
   manifest: '/manifest.json',
   alternates: {
     canonical: '/',
@@ -85,6 +106,29 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${siteUrl}/#website`,
+      url: `${siteUrl}/`,
+      name: SITE_NAME,
+      description: SITE_DESCRIPTION,
+      inLanguage: 'nl-NL',
+      publisher: { '@id': `${siteUrl}/#person` },
+    },
+    {
+      '@type': 'Person',
+      '@id': `${siteUrl}/#person`,
+      name: 'Erik de Boer',
+      url: `${siteUrl}/about`,
+      email: 'calorietje@erikie.nl',
+      worksFor: { '@type': 'Organization', name: 'jump.nl', url: 'https://jump.nl' },
+    },
+  ],
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
@@ -92,6 +136,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {isProd ? (
+          <script
+            type="application/ld+json"
+            // JSON.stringify is veilig: alle waardes zijn statische strings, geen user input.
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+        ) : null}
         <Providers>{children}</Providers>
         <ServiceWorkerRegister />
       </body>

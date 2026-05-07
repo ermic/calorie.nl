@@ -15,3 +15,4 @@ export { Skeleton } from './Skeleton';
 export { Toaster } from './Toast';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 export { StripesBackground } from './StripesBackground';
+export { BackLink } from './BackLink';
