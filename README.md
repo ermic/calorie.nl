@@ -1,6 +1,6 @@
 # nutrientcontent
 
-# DEMO CODE calorietjes.nl
+# PUBLIC DEMO CODE calorietje.nl
 
 
 Lokale microservice die de RIVM **NEVO 2025** voedingswaardetabel ontsluit voor
